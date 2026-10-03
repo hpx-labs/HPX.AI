@@ -6,25 +6,35 @@
 <title>HPX AI — HPX LABS</title>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Arial,sans-serif}
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,Helvetica,sans-serif;
+}
 
 body{
     background:#050816;
-    color:#fff;
+    color:white;
     height:100vh;
     overflow:hidden;
 }
 
+button{
+    font-family:inherit;
+}
+
 .app{
-    height:100vh;
     display:flex;
+    height:100vh;
 }
 
 /* SIDEBAR */
+
 .sidebar{
     width:260px;
     background:#080d1d;
-    border-right:1px solid #17233d;
+    border-right:1px solid #18233d;
     padding:22px;
     display:flex;
     flex-direction:column;
@@ -45,33 +55,34 @@ body{
 }
 
 .newchat{
-    border:1px solid #168dcc;
+    width:100%;
+    border:1px solid #1599dc;
     background:linear-gradient(135deg,#0ea5e9,#2563eb);
-    color:#fff;
+    color:white;
     padding:13px;
     border-radius:12px;
+    font-weight:bold;
     cursor:pointer;
-    font-size:14px;
-    font-weight:700;
     margin-bottom:20px;
 }
 
 .newchat:hover{
-    transform:translateY(-1px);
     box-shadow:0 0 25px #0ea5e955;
 }
 
 .nav{
-    padding:12px;
+    padding:13px 11px;
     color:#94a3b8;
     border-radius:10px;
     cursor:pointer;
-    margin-bottom:5px;
+    margin-bottom:4px;
+    transition:.2s;
 }
 
-.nav:hover{
+.nav:hover,
+.nav.active{
     background:#111a30;
-    color:#fff;
+    color:white;
 }
 
 .sidebottom{
@@ -82,6 +93,7 @@ body{
 }
 
 /* MAIN */
+
 .main{
     flex:1;
     display:flex;
@@ -91,25 +103,25 @@ body{
 
 .topbar{
     height:68px;
-    border-bottom:1px solid #17233d;
+    border-bottom:1px solid #18233d;
     display:flex;
     align-items:center;
     padding:0 25px;
-    background:#070b18cc;
-    backdrop-filter:blur(15px);
+    background:#070b18dd;
 }
 
 .top-title{
-    font-weight:700;
+    font-weight:bold;
 }
 
 .status{
     margin-left:auto;
-    font-size:12px;
     color:#22c55e;
+    font-size:12px;
 }
 
 /* CHAT */
+
 .chat{
     flex:1;
     overflow-y:auto;
@@ -118,6 +130,7 @@ body{
 
 .welcome{
     height:100%;
+    min-height:450px;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -140,7 +153,6 @@ body{
 
 .welcome h1{
     font-size:46px;
-    font-weight:800;
     background:linear-gradient(90deg,#38bdf8,#818cf8,#c084fc);
     -webkit-background-clip:text;
     color:transparent;
@@ -149,7 +161,6 @@ body{
 .welcome p{
     color:#94a3b8;
     margin-top:12px;
-    font-size:16px;
 }
 
 .message{
@@ -163,8 +174,14 @@ body{
 }
 
 @keyframes appear{
-    from{opacity:0;transform:translateY(8px)}
-    to{opacity:1;transform:translateY(0)}
+    from{
+        opacity:0;
+        transform:translateY(8px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
 }
 
 .user{
@@ -186,9 +203,10 @@ body{
 }
 
 /* INPUT */
+
 .input-area{
     padding:15px 7% 22px;
-    border-top:1px solid #17233d;
+    border-top:1px solid #18233d;
 }
 
 .inputbox{
@@ -200,7 +218,6 @@ body{
     border-radius:17px;
     background:#0b1224;
     border:1px solid #263653;
-    box-shadow:0 10px 40px #0005;
 }
 
 textarea{
@@ -230,18 +247,158 @@ textarea::placeholder{
     cursor:pointer;
 }
 
-.send:hover{
-    box-shadow:0 0 20px #0ea5e955;
+/* MODAL */
+
+.modal{
+    position:fixed;
+    inset:0;
+    background:#000000aa;
+    backdrop-filter:blur(8px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    padding:20px;
 }
 
-.typing{
-    max-width:850px;
-    margin:10px auto;
-    color:#64748b;
+.modal.show{
+    display:flex;
+}
+
+.modal-box{
+    width:100%;
+    max-width:500px;
+    max-height:85vh;
+    overflow:auto;
+    background:#0a1022;
+    border:1px solid #263653;
+    border-radius:20px;
+    padding:25px;
+    box-shadow:0 20px 80px #0008;
+    animation:modalIn .2s ease;
+}
+
+@keyframes modalIn{
+    from{
+        opacity:0;
+        transform:scale(.95);
+    }
+    to{
+        opacity:1;
+        transform:scale(1);
+    }
+}
+
+.modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:22px;
+}
+
+.modal-header h2{
+    color:#38bdf8;
+}
+
+.close{
+    width:35px;
+    height:35px;
+    border:0;
+    border-radius:10px;
+    background:#151e35;
+    color:white;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.field{
+    margin-bottom:18px;
+}
+
+.field label{
+    display:block;
+    color:#94a3b8;
     font-size:13px;
+    margin-bottom:8px;
+}
+
+.field input{
+    width:100%;
+    padding:13px;
+    border-radius:10px;
+    border:1px solid #263653;
+    background:#070c1b;
+    color:white;
+    outline:none;
+}
+
+.field input:focus{
+    border-color:#0ea5e9;
+}
+
+.save{
+    width:100%;
+    padding:13px;
+    border:0;
+    border-radius:10px;
+    background:linear-gradient(135deg,#0ea5e9,#2563eb);
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.warning{
+    margin-top:15px;
+    padding:12px;
+    background:#261b0a;
+    border:1px solid #6b4a12;
+    border-radius:10px;
+    color:#fbbf24;
+    font-size:12px;
+    line-height:1.5;
+}
+
+.about-text{
+    color:#94a3b8;
+    line-height:1.7;
+}
+
+.about-logo{
+    font-size:30px;
+    font-weight:bold;
+    color:#38bdf8;
+    margin-bottom:12px;
+}
+
+/* HISTORY */
+
+.history-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.history-item{
+    padding:13px;
+    border-radius:10px;
+    background:#10182d;
+    color:#cbd5e1;
+    cursor:pointer;
+    border:1px solid #1b2945;
+}
+
+.history-item:hover{
+    border-color:#0ea5e9;
+}
+
+.empty{
+    color:#64748b;
+    text-align:center;
+    padding:30px 10px;
 }
 
 /* MOBILE */
+
 @media(max-width:700px){
 
     .sidebar{
@@ -277,95 +434,238 @@ textarea::placeholder{
 
 <div class="app">
 
-    <aside class="sidebar">
+<aside class="sidebar">
 
-        <div class="logo">⚡ HPX AI</div>
-        <div class="brand">BY HPX LABS</div>
+    <div class="logo">⚡ HPX AI</div>
 
-        <button class="newchat" onclick="newChat()">
-            ＋ New Chat
+    <div class="brand">BY HPX LABS</div>
+
+    <button class="newchat" onclick="newChat()">
+        ＋ New Chat
+    </button>
+
+    <div class="nav active" onclick="showChat(this)">
+        💬 Chat
+    </div>
+
+    <div class="nav" onclick="showHistory(this)">
+        🕘 History
+    </div>
+
+    <div class="nav" onclick="openSettings(this)">
+        ⚙️ Settings
+    </div>
+
+    <div class="nav" onclick="openAbout(this)">
+        ℹ️ About HPX AI
+    </div>
+
+    <div class="sidebottom">
+        HPX LABS © 2026
+    </div>
+
+</aside>
+
+
+<main class="main">
+
+<header class="topbar">
+
+    <div class="top-title" id="pageTitle">
+        HPX AI
+    </div>
+
+    <div class="status">
+        ● READY
+    </div>
+
+</header>
+
+
+<section class="chat" id="chat">
+
+    <div class="welcome" id="welcome">
+
+        <div class="logoicon">⚡</div>
+
+        <h1>Welcome to HPX AI</h1>
+
+        <p>
+            Your intelligent AI assistant by HPX LABS.
+        </p>
+
+    </div>
+
+</section>
+
+
+<div class="input-area">
+
+    <div class="inputbox">
+
+        <textarea
+            id="input"
+            placeholder="Message HPX AI..."
+            onkeydown="handleKey(event)"
+        ></textarea>
+
+        <button class="send" onclick="sendMessage()">
+            ➤
         </button>
 
-        <div class="nav">💬 Chat</div>
-        <div class="nav">🕘 History</div>
-        <div class="nav">⚙️ Settings</div>
-        <div class="nav">ℹ️ About HPX AI</div>
+    </div>
 
-        <div class="sidebottom">
-            HPX LABS © 2026
-        </div>
+</div>
 
-    </aside>
+</main>
+</div>
 
 
-    <main class="main">
+<!-- SETTINGS MODAL -->
 
-        <header class="topbar">
+<div class="modal" id="settingsModal">
 
-            <div class="top-title">
-                HPX AI
-            </div>
+<div class="modal-box">
 
-            <div class="status">
-                ● READY
-            </div>
+    <div class="modal-header">
 
-        </header>
+        <h2>⚙️ Settings</h2>
+
+        <button class="close" onclick="closeModal('settingsModal')">
+            ×
+        </button>
+
+    </div>
+
+    <div class="field">
+
+        <label>AI Provider</label>
+
+        <input
+            id="provider"
+            value="OpenRouter"
+            placeholder="OpenRouter"
+        >
+
+    </div>
+
+    <div class="field">
+
+        <label>API Key</label>
+
+        <input
+            id="apiKey"
+            type="password"
+            placeholder="Paste your API key later"
+        >
+
+    </div>
+
+    <div class="field">
+
+        <label>Model</label>
+
+        <input
+            id="model"
+            placeholder="Enter model name"
+        >
+
+    </div>
+
+    <button class="save" onclick="saveSettings()">
+        💾 Save Settings
+    </button>
+
+    <div class="warning">
+        ⚠️ For a public GitHub Pages website, do not put a secret API key directly inside the source code. A secure backend should handle the API request.
+    </div>
+
+</div>
+
+</div>
 
 
-        <section class="chat" id="chat">
+<!-- ABOUT MODAL -->
 
-            <div class="welcome" id="welcome">
+<div class="modal" id="aboutModal">
 
-                <div class="logoicon">
-                    ⚡
-                </div>
+<div class="modal-box">
 
-                <h1>Welcome to HPX AI</h1>
+    <div class="modal-header">
 
-                <p>
-                    Your intelligent AI assistant by HPX LABS.
-                </p>
+        <h2>ℹ️ About</h2>
 
-            </div>
+        <button class="close" onclick="closeModal('aboutModal')">
+            ×
+        </button>
 
-        </section>
+    </div>
+
+    <div class="about-logo">
+        ⚡ HPX AI
+    </div>
+
+    <div class="about-text">
+
+        <p>
+            <b>AI Assistant by HPX LABS</b>
+        </p>
+
+        <br>
+
+        <p>
+            HPX AI is an AI assistant project developed by HPX LABS.
+        </p>
+
+        <br>
+
+        <p>
+            Built with a futuristic interface and designed to become a powerful AI platform.
+        </p>
+
+    </div>
+
+</div>
+
+</div>
 
 
-        <div class="input-area">
+<!-- HISTORY MODAL -->
 
-            <div class="inputbox">
+<div class="modal" id="historyModal">
 
-                <textarea
-                    id="input"
-                    placeholder="Message HPX AI..."
-                    onkeydown="handleKey(event)"
-                ></textarea>
+<div class="modal-box">
 
-                <button class="send" onclick="sendMessage()">
-                    ➤
-                </button>
+    <div class="modal-header">
 
-            </div>
+        <h2>🕘 Chat History</h2>
 
-        </div>
+        <button class="close" onclick="closeModal('historyModal')">
+            ×
+        </button>
 
-    </main>
+    </div>
+
+    <div id="historyList" class="history-list"></div>
+
+</div>
 
 </div>
 
 
 <script>
 
-const input = document.getElementById("input");
-const chat = document.getElementById("chat");
+let messages=[];
 
 
-function handleKey(e){
+/* KEYBOARD */
 
-    if(e.key === "Enter" && !e.shiftKey){
+function handleKey(event){
 
-        e.preventDefault();
+    if(event.key==="Enter" && !event.shiftKey){
+
+        event.preventDefault();
+
         sendMessage();
 
     }
@@ -373,9 +673,57 @@ function handleKey(e){
 }
 
 
+/* SEND MESSAGE */
+
+function sendMessage(){
+
+    const input=document.getElementById("input");
+
+    const text=input.value.trim();
+
+    if(!text) return;
+
+    addMessage(text,"user");
+
+    messages.push({
+        role:"user",
+        content:text
+    });
+
+    saveHistory();
+
+    input.value="";
+
+    const typing=document.createElement("div");
+
+    typing.className="typing";
+
+    typing.id="typing";
+
+    typing.textContent=
+        "HPX AI is ready — connect your API to enable live AI responses.";
+
+    document.getElementById("chat").appendChild(typing);
+
+    setTimeout(()=>{
+
+        typing.remove();
+
+        addMessage(
+            "Your HPX AI interface is working successfully.\n\nOpen Settings to configure your AI connection.",
+            "ai"
+        );
+
+    },600);
+
+}
+
+
+/* ADD MESSAGE */
+
 function addMessage(text,type){
 
-    const welcome = document.getElementById("welcome");
+    const welcome=document.getElementById("welcome");
 
     if(welcome){
         welcome.style.display="none";
@@ -389,7 +737,7 @@ function addMessage(text,type){
 
     label.className="label";
 
-    label.textContent =
+    label.textContent=
         type==="user" ? "YOU" : "HPX AI";
 
     const content=document.createElement("div");
@@ -397,61 +745,30 @@ function addMessage(text,type){
     content.textContent=text;
 
     box.appendChild(label);
+
     box.appendChild(content);
 
-    chat.appendChild(box);
+    document.getElementById("chat").appendChild(box);
 
-    chat.scrollTop=chat.scrollHeight;
-}
-
-
-function sendMessage(){
-
-    const text=input.value.trim();
-
-    if(!text) return;
-
-    addMessage(text,"user");
-
-    input.value="";
-
-
-    const typing=document.createElement("div");
-
-    typing.className="typing";
-
-    typing.id="typing";
-
-    typing.textContent="HPX AI is ready for API connection...";
-
-    chat.appendChild(typing);
-
-    chat.scrollTop=chat.scrollHeight;
-
-
-    setTimeout(()=>{
-
-        typing.remove();
-
-        addMessage(
-            "HPX AI interface is working successfully.\n\nConnect your AI API to enable real AI responses.",
-            "ai"
-        );
-
-    },700);
+    document.getElementById("chat").scrollTop=
+        document.getElementById("chat").scrollHeight;
 
 }
 
+
+/* NEW CHAT */
 
 function newChat(){
 
-    chat.innerHTML=`
+    messages=[];
+
+    localStorage.removeItem("hpx_current_chat");
+
+    document.getElementById("chat").innerHTML=`
 
         <div class="welcome" id="welcome">
 
-            <div class="logoicon">
-                ⚡
-            </div>
+            <div class="logoicon">⚡</div>
 
             <h1>Welcome to HPX AI</h1>
 
@@ -460,12 +777,220 @@ function newChat(){
             </p>
 
         </div>
-
     `;
+
+    document.getElementById("pageTitle").textContent="HPX AI";
+
+}
+
+
+/* SETTINGS */
+
+function openSettings(el){
+
+    setActive(el);
+
+    document.getElementById("settingsModal")
+        .classList.add("show");
+
+    document.getElementById("pageTitle")
+        .textContent="Settings";
+
+}
+
+
+function saveSettings(){
+
+    const provider=
+        document.getElementById("provider").value;
+
+    const model=
+        document.getElementById("model").value;
+
+    /*
+      API key is intentionally NOT stored permanently.
+      Add secure backend connection later.
+    */
+
+    localStorage.setItem(
+        "hpx_provider",
+        provider
+    );
+
+    localStorage.setItem(
+        "hpx_model",
+        model
+    );
+
+    alert(
+        "Settings saved. Your secure AI backend can be connected next."
+    );
+
+}
+
+
+/* ABOUT */
+
+function openAbout(el){
+
+    setActive(el);
+
+    document.getElementById("aboutModal")
+        .classList.add("show");
+
+    document.getElementById("pageTitle")
+        .textContent="About HPX AI";
+
+}
+
+
+/* HISTORY */
+
+function showHistory(el){
+
+    setActive(el);
+
+    document.getElementById("historyModal")
+        .classList.add("show");
+
+    document.getElementById("pageTitle")
+        .textContent="History";
+
+    loadHistory();
+
+}
+
+
+/* CHAT */
+
+function showChat(el){
+
+    setActive(el);
+
+    document.getElementById("pageTitle")
+        .textContent="HPX AI";
+
+}
+
+
+/* ACTIVE MENU */
+
+function setActive(el){
+
+    document.querySelectorAll(".nav")
+        .forEach(item =>
+            item.classList.remove("active")
+        );
+
+    if(el){
+        el.classList.add("active");
+    }
+
+}
+
+
+/* MODAL */
+
+function closeModal(id){
+
+    document.getElementById(id)
+        .classList.remove("show");
+
+}
+
+
+/* CLICK OUTSIDE MODAL */
+
+document.querySelectorAll(".modal")
+.forEach(modal=>{
+
+    modal.addEventListener("click",function(e){
+
+        if(e.target===modal){
+
+            modal.classList.remove("show");
+
+        }
+
+    });
+
+});
+
+
+/* HISTORY */
+
+function saveHistory(){
+
+    if(messages.length===0) return;
+
+    localStorage.setItem(
+        "hpx_current_chat",
+        JSON.stringify(messages)
+    );
+
+}
+
+
+function loadHistory(){
+
+    const list=
+        document.getElementById("historyList");
+
+    const saved=
+        localStorage.getItem("hpx_current_chat");
+
+    list.innerHTML="";
+
+    if(!saved){
+
+        list.innerHTML=
+            '<div class="empty">No chat history yet.</div>';
+
+        return;
+
+    }
+
+    const data=
+        JSON.parse(saved);
+
+    data.forEach((item,index)=>{
+
+        const div=
+            document.createElement("div");
+
+        div.className="history-item";
+
+        div.textContent=
+            item.role==="user"
+            ? item.content.substring(0,60)
+            : "HPX AI Response";
+
+        div.onclick=()=>{
+
+            closeModal("historyModal");
+
+            document.getElementById("chat").innerHTML="";
+
+            data.forEach(message=>{
+
+                addMessage(
+                    message.content,
+                    message.role==="user"
+                    ? "user"
+                    : "ai"
+                );
+
+            });
+
+        };
+
+        list.appendChild(div);
+
+    });
 
 }
 
 </script>
 
 </body>
-  </html>
+</html> 

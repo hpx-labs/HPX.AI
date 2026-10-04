@@ -3,7 +3,7 @@ export default {
     const url = new URL(request.url);
 
     // =========================
-    // AI API
+    // AI BACKEND
     // =========================
     if (url.pathname === "/api/chat") {
       if (request.method !== "POST") {
@@ -13,14 +13,14 @@ export default {
       try {
         if (!env.OPENROUTER_API_KEY) {
           return json({
-            error: "OPENROUTER_API_KEY is not configured in Cloudflare."
+            error: "OPENROUTER_API_KEY is not configured."
           }, 500);
         }
 
         const body = await request.json();
 
         const messages = Array.isArray(body.messages)
-          ? body.messages.slice(-20)
+          ? body.messages.slice(-30)
           : [];
 
         if (!messages.length) {
@@ -39,7 +39,7 @@ export default {
             },
             body: JSON.stringify({
               model: "openrouter/free",
-              messages: messages,
+              messages,
               temperature: 0.7
             })
           }
@@ -55,11 +55,11 @@ export default {
           }, response.status);
         }
 
-        const reply =
-          data?.choices?.[0]?.message?.content ||
-          "Sorry, I couldn't generate a response.";
-
-        return json({ reply });
+        return json({
+          reply:
+            data?.choices?.[0]?.message?.content ||
+            "Sorry, I couldn't generate a response."
+        });
 
       } catch (error) {
         return json({
@@ -69,44 +69,66 @@ export default {
     }
 
     // =========================
-    // HPX AI WEBSITE
+    // HPX AI FRONTEND
     // =========================
 
     return new Response(`<!DOCTYPE html>
 <html lang="en">
+
 <head>
 
 <meta charset="UTF-8">
 
-<meta name="viewport"
-content="width=device-width,initial-scale=1">
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1,viewport-fit=cover"
+>
 
 <title>HPX AI</title>
 
 <style>
 
+/* =========================
+   BASE
+========================= */
+
 *{
   box-sizing:border-box;
 }
 
+html,
 body{
   margin:0;
-  font-family:Arial,sans-serif;
-  background:#050914;
-  color:white;
-  height:100vh;
+  width:100%;
+  height:100%;
   overflow:hidden;
 }
 
+body{
+  font-family:Arial,sans-serif;
+  background:#050914;
+  color:white;
+}
+
+/* =========================
+   APP
+========================= */
+
 .app{
-  height:100vh;
+  width:100%;
+  height:100dvh;
+  min-height:100vh;
   display:flex;
 }
 
-/* SIDEBAR */
+/* =========================
+   SIDEBAR
+========================= */
 
 .sidebar{
   width:260px;
+  height:100%;
+  flex-shrink:0;
   background:#080d1c;
   border-right:1px solid #17213b;
   padding:18px;
@@ -123,6 +145,7 @@ body{
 
 .new{
   width:100%;
+  min-height:46px;
   padding:12px;
   border:1px solid #19bde5;
   border-radius:10px;
@@ -132,8 +155,8 @@ body{
   font-size:14px;
 }
 
-.new:hover{
-  background:#10243e;
+.new:active{
+  transform:scale(.98);
 }
 
 .history-title{
@@ -149,7 +172,7 @@ body{
 }
 
 .history-item{
-  padding:10px;
+  padding:11px;
   margin-bottom:5px;
   border-radius:8px;
   color:#cbd5e1;
@@ -164,19 +187,31 @@ body{
   background:#111c31;
 }
 
-/* MAIN */
+.history-empty{
+  color:#59657b;
+  font-size:12px;
+  padding:10px 4px;
+}
+
+/* =========================
+   MAIN
+========================= */
 
 .main{
   flex:1;
+  min-width:0;
+  height:100%;
   display:flex;
   flex-direction:column;
-  min-width:0;
 }
 
-/* TOP */
+/* =========================
+   TOP BAR
+========================= */
 
 .top{
   height:62px;
+  min-height:62px;
   padding:0 20px;
   display:flex;
   align-items:center;
@@ -188,22 +223,43 @@ body{
   font-size:16px;
 }
 
+.top-right{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
 .online{
   color:#55e6a7;
   font-size:13px;
 }
 
-/* CHAT */
+.settings-btn{
+  border:1px solid #20304e;
+  background:#0d1527;
+  color:white;
+  border-radius:8px;
+  padding:8px 11px;
+  cursor:pointer;
+  font-size:16px;
+}
+
+/* =========================
+   CHAT
+========================= */
 
 .chat{
   flex:1;
+  min-height:0;
   overflow-y:auto;
-  padding:25px 15px;
+  padding:25px 15px 20px;
+  -webkit-overflow-scrolling:touch;
 }
 
 .welcome{
   text-align:center;
   margin-top:14vh;
+  padding:0 15px;
 }
 
 .welcome h1{
@@ -218,7 +274,9 @@ body{
   color:#8995ad;
 }
 
-/* MESSAGE */
+/* =========================
+   MESSAGES
+========================= */
 
 .msg{
   max-width:850px;
@@ -236,7 +294,7 @@ body{
   border-radius:14px;
   white-space:pre-wrap;
   line-height:1.5;
-  word-wrap:break-word;
+  word-break:break-word;
 }
 
 .user .bubble{
@@ -248,42 +306,66 @@ body{
   border:1px solid #1b2945;
 }
 
-/* INPUT */
+/* =========================
+   INPUT AREA
+========================= */
 
 .input-area{
-  padding:12px 15px 18px;
+  flex-shrink:0;
+  width:100%;
+  padding:10px 15px calc(15px + env(safe-area-inset-bottom));
+  background:#050914;
   border-top:1px solid #17213b;
 }
 
 .input{
+  width:100%;
   max-width:850px;
+  min-height:58px;
   margin:auto;
   display:flex;
+  align-items:flex-end;
   gap:8px;
   background:#0d1527;
-  border:1px solid #20304e;
-  border-radius:14px;
+  border:1px solid #2a3b5d;
+  border-radius:15px;
   padding:7px;
+  box-shadow:0 4px 20px #0005;
 }
 
 textarea{
   flex:1;
+  width:100%;
+  min-width:0;
+  min-height:42px;
+  max-height:140px;
   resize:none;
   background:transparent;
   border:0;
   outline:0;
   color:white;
-  padding:11px;
+  padding:11px 10px;
   font-size:15px;
+  line-height:20px;
+  font-family:Arial,sans-serif;
+  display:block;
+}
+
+textarea::placeholder{
+  color:#68758d;
 }
 
 .send{
-  width:48px;
+  flex-shrink:0;
+  width:46px;
+  height:46px;
   border:0;
-  border-radius:10px;
+  border-radius:11px;
   background:#10bfe8;
+  color:#031018;
   cursor:pointer;
   font-size:20px;
+  font-weight:bold;
 }
 
 .send:disabled{
@@ -291,19 +373,21 @@ textarea{
   cursor:not-allowed;
 }
 
-/* SETTINGS */
+/* =========================
+   SETTINGS
+========================= */
 
 .settings{
   position:fixed;
   right:20px;
   top:75px;
-  width:280px;
+  width:290px;
   background:#0b1222;
   border:1px solid #1c2b49;
   border-radius:14px;
   padding:18px;
   display:none;
-  z-index:20;
+  z-index:50;
   box-shadow:0 10px 40px #0008;
 }
 
@@ -315,6 +399,7 @@ textarea{
   margin:15px 0;
   color:#aab5ca;
   font-size:14px;
+  line-height:1.5;
 }
 
 .close{
@@ -322,20 +407,13 @@ textarea{
   border:0;
   background:none;
   color:white;
-  font-size:18px;
+  font-size:22px;
   cursor:pointer;
 }
 
-.settings-btn{
-  border:1px solid #20304e;
-  background:#0d1527;
-  color:white;
-  border-radius:8px;
-  padding:8px 12px;
-  cursor:pointer;
-}
-
-/* MOBILE */
+/* =========================
+   MOBILE
+========================= */
 
 @media(max-width:700px){
 
@@ -343,24 +421,60 @@ textarea{
     display:none;
   }
 
+  .top{
+    padding:0 13px;
+  }
+
+  .online{
+    font-size:12px;
+  }
+
+  .chat{
+    padding:18px 10px 15px;
+  }
+
   .welcome{
-    margin-top:12vh;
+    margin-top:11vh;
   }
 
   .welcome h1{
     font-size:36px;
   }
 
+  .welcome p{
+    font-size:14px;
+  }
+
   .bubble{
     max-width:90%;
+    padding:11px 13px;
+  }
+
+  .input-area{
+    padding:8px 9px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .input{
+    min-height:58px;
+    border-radius:14px;
+  }
+
+  textarea{
+    font-size:16px;
+    min-height:43px;
+  }
+
+  .send{
+    width:44px;
+    height:44px;
   }
 
   .settings{
-    right:10px;
+    top:70px;
     left:10px;
+    right:10px;
     width:auto;
   }
-
 }
 
 </style>
@@ -379,7 +493,10 @@ textarea{
 ⚡ HPX AI
 </div>
 
-<button class="new" onclick="newChat()">
+<button
+  class="new"
+  onclick="newChat()"
+>
 ＋ New Chat
 </button>
 
@@ -387,7 +504,10 @@ textarea{
 🕘 History
 </div>
 
-<div id="historyList" class="history-list"></div>
+<div
+  id="historyList"
+  class="history-list"
+></div>
 
 </aside>
 
@@ -402,15 +522,16 @@ textarea{
 <b>HPX AI</b>
 </div>
 
-<div>
+<div class="top-right">
 
 <span class="online">
 ● Online
 </span>
 
 <button
-class="settings-btn"
-onclick="openSettings()">
+  class="settings-btn"
+  onclick="openSettings()"
+>
 ⚙️
 </button>
 
@@ -419,9 +540,15 @@ onclick="openSettings()">
 </header>
 
 
-<section id="chat" class="chat">
+<section
+  id="chat"
+  class="chat"
+>
 
-<div id="welcome" class="welcome">
+<div
+  id="welcome"
+  class="welcome"
+>
 
 <h1>HPX AI</h1>
 
@@ -434,21 +561,23 @@ Intelligent AI assistant by HPX LABS.
 </section>
 
 
+<!-- INPUT -->
+
 <div class="input-area">
 
 <div class="input">
 
 <textarea
-id="input"
-rows="1"
-placeholder="Message HPX AI..."
-onkeydown="key(event)"
+  id="input"
+  rows="1"
+  placeholder="Message HPX AI..."
 ></textarea>
 
 <button
-id="send"
-class="send"
-onclick="send()">
+  id="send"
+  class="send"
+  onclick="send()"
+>
 ➤
 </button>
 
@@ -463,14 +592,21 @@ onclick="send()">
 
 <!-- SETTINGS -->
 
-<div id="settings" class="settings">
+<div
+  id="settings"
+  class="settings"
+>
 
-<button class="close"
-onclick="closeSettings()">
+<button
+  class="close"
+  onclick="closeSettings()"
+>
 ×
 </button>
 
-<h3>⚙️ Settings</h3>
+<h3>
+⚙️ Settings
+</h3>
 
 <div class="setting-row">
 <b>Model</b><br>
@@ -489,9 +625,11 @@ HPX AI v1.0
 
 <div class="setting-row">
 <b>Status</b><br>
+
 <span style="color:#55e6a7">
 ● Connected
 </span>
+
 </div>
 
 </div>
@@ -500,14 +638,75 @@ HPX AI v1.0
 <script>
 
 /* =========================
-   DATA
+   STATE
 ========================= */
 
 let messages = [];
 
+let currentChatId = null;
+
+let isSaving = false;
+
 let history =
 JSON.parse(
-localStorage.getItem("hpx_history") || "[]"
+  localStorage.getItem("hpx_history") || "[]"
+);
+
+
+/* =========================
+   DOM
+========================= */
+
+const input =
+document.getElementById("input");
+
+const sendButton =
+document.getElementById("send");
+
+const chat =
+document.getElementById("chat");
+
+
+/* =========================
+   INPUT AUTO RESIZE
+========================= */
+
+input.addEventListener(
+  "input",
+  function(){
+
+    this.style.height = "auto";
+
+    this.style.height =
+      Math.min(
+        this.scrollHeight,
+        140
+      ) + "px";
+
+  }
+);
+
+
+/* =========================
+   ENTER
+========================= */
+
+input.addEventListener(
+  "keydown",
+  function(e){
+
+    if(
+      e.key === "Enter" &&
+      !e.shiftKey
+    ){
+
+      e.preventDefault();
+
+      send();
+
+    }
+
+  }
 );
 
 
@@ -516,9 +715,6 @@ localStorage.getItem("hpx_history") || "[]"
 ========================= */
 
 function add(role,text){
-
-  const chat =
-  document.getElementById("chat");
 
   const row =
   document.createElement("div");
@@ -532,7 +728,8 @@ function add(role,text){
   bubble.className =
   "bubble";
 
-  bubble.textContent = text;
+  bubble.textContent =
+  text;
 
   row.appendChild(bubble);
 
@@ -551,21 +748,33 @@ function add(role,text){
 
 async function send(){
 
-  const input =
-  document.getElementById("input");
-
-  const button =
-  document.getElementById("send");
-
   const text =
   input.value.trim();
 
   if(!text) return;
 
-  document
-  .getElementById("welcome")
-  .style.display="none";
 
+  /* Hide welcome */
+
+  const welcome =
+  document.getElementById("welcome");
+
+  if(welcome){
+    welcome.style.display="none";
+  }
+
+
+  /* Create ID only once */
+
+  if(!currentChatId){
+
+    currentChatId =
+      Date.now().toString();
+
+  }
+
+
+  /* User message */
 
   messages.push({
     role:"user",
@@ -573,35 +782,50 @@ async function send(){
   });
 
 
-  add("user",text);
+  add(
+    "user",
+    text
+  );
+
+
+  /* Clear input */
 
   input.value="";
 
-  button.disabled=true;
+  input.style.height="auto";
 
+
+  sendButton.disabled=true;
+
+
+  /* Thinking */
 
   const replyBox =
-  add("assistant","Thinking...");
+  add(
+    "assistant",
+    "Thinking..."
+  );
 
 
   try{
 
     const response =
-    await fetch("/api/chat",{
+    await fetch(
+      "/api/chat",
+      {
+        method:"POST",
 
-      method:"POST",
+        headers:{
+          "Content-Type":
+          "application/json"
+        },
 
-      headers:{
-        "Content-Type":
-        "application/json"
-      },
-
-      body:
-      JSON.stringify({
-        messages:messages
-      })
-
-    });
+        body:
+        JSON.stringify({
+          messages:messages
+        })
+      }
+    );
 
 
     const data =
@@ -623,26 +847,21 @@ async function send(){
 
 
     messages.push({
-
       role:"assistant",
-
       content:data.reply
-
     });
-
-
-    saveHistory();
 
 
   }catch(error){
 
     replyBox.textContent =
-    "⚠️ " + error.message;
+      "⚠️ " +
+      error.message;
 
   }
 
 
-  button.disabled=false;
+  sendButton.disabled=false;
 
   input.focus();
 
@@ -650,78 +869,169 @@ async function send(){
 
 
 /* =========================
-   ENTER KEY
+   GET CHAT TITLE
 ========================= */
 
-function key(e){
-
-  if(
-    e.key==="Enter" &&
-    !e.shiftKey
-  ){
-
-    e.preventDefault();
-
-    send();
-
-  }
-
-}
-
-
-/* =========================
-   NEW CHAT
-========================= */
-
-function newChat(){
-
-  if(messages.length){
-
-    saveHistory();
-
-  }
-
-  messages=[];
-
-  location.reload();
-
-}
-
-
-/* =========================
-   HISTORY
-========================= */
-
-function saveHistory(){
-
-  if(!messages.length)
-  return;
-
+function getTitle(){
 
   const firstUser =
-  messages.find(
-    m => m.role==="user"
-  );
+    messages.find(
+      m =>
+      m.role === "user"
+    );
+
+
+  if(!firstUser){
+    return "New Chat";
+  }
+
+
+  let title =
+    firstUser.content
+      .replace(/\\s+/g," ")
+      .trim();
+
+
+  /* Remove generic greetings */
+
+  const generic =
+    [
+      "hello",
+      "hi",
+      "hey",
+      "hii",
+      "helo",
+      "hello hpx ai"
+    ];
+
+
+  if(
+    generic.includes(
+      title.toLowerCase()
+    )
+  ){
+
+    const secondUser =
+      messages.find(
+        m =>
+        m.role === "user" &&
+        m !== firstUser
+      );
+
+
+    if(secondUser){
+
+      title =
+      secondUser.content
+        .replace(/\\s+/g," ")
+        .trim();
+
+    }else{
+
+      title =
+        "New Conversation";
+
+    }
+
+  }
+
+
+  if(title.length > 35){
+
+    title =
+      title.substring(0,35) + "...";
+
+  }
+
+
+  return title;
+
+}
+
+
+/* =========================
+   SAVE CURRENT CHAT
+========================= */
+
+function saveCurrentChat(){
+
+  if(
+    !messages.length ||
+    isSaving
+  ){
+    return;
+  }
+
+
+  /* Only save conversations
+     containing a response */
+
+  const hasAssistant =
+    messages.some(
+      m =>
+      m.role === "assistant" &&
+      m.content !== "Thinking..."
+    );
+
+
+  if(!hasAssistant){
+    return;
+  }
+
+
+  isSaving=true;
 
 
   const title =
-  firstUser
-  ? firstUser.content.slice(0,35)
-  : "New Chat";
+    getTitle();
 
 
-  history.unshift({
+  const existingIndex =
+    history.findIndex(
+      item =>
+      item.id === currentChatId
+    );
+
+
+  const chatData = {
+
+    id:
+      currentChatId ||
+      Date.now().toString(),
 
     title:title,
 
     messages:
-    messages
+      messages.map(
+        m => ({
+          role:m.role,
+          content:m.content
+        })
+      )
 
-  });
+  };
+
+
+  if(existingIndex >= 0){
+
+    /* Update existing chat */
+
+    history[existingIndex] =
+      chatData;
+
+  }else{
+
+    /* Create ONE new history */
+
+    history.unshift(
+      chatData
+    );
+
+  }
 
 
   history =
-  history.slice(0,20);
+    history.slice(0,30);
 
 
   localStorage.setItem(
@@ -732,45 +1042,116 @@ function saveHistory(){
 
   renderHistory();
 
+
+  setTimeout(
+    () => {
+      isSaving=false;
+    },
+    100
+  );
+
 }
 
 
 /* =========================
-   RENDER HISTORY
+   NEW CHAT
+========================= */
+
+function newChat(){
+
+  saveCurrentChat();
+
+  messages=[];
+
+  currentChatId=null;
+
+  chat.innerHTML=`
+
+    <div
+      id="welcome"
+      class="welcome"
+    >
+
+      <h1>HPX AI</h1>
+
+      <p>
+      Intelligent AI assistant by HPX LABS.
+      </p>
+
+    </div>
+
+  `;
+
+  input.value="";
+
+  input.style.height="auto";
+
+  input.focus();
+
+  renderHistory();
+
+}
+
+
+/* =========================
+   HISTORY
 ========================= */
 
 function renderHistory(){
 
   const list =
-  document.getElementById(
-    "historyList"
-  );
+    document.getElementById(
+      "historyList"
+    );
 
 
   list.innerHTML="";
+
+
+  if(!history.length){
+
+    const empty =
+      document.createElement(
+        "div"
+      );
+
+    empty.className =
+      "history-empty";
+
+    empty.textContent =
+      "No chats yet";
+
+    list.appendChild(empty);
+
+    return;
+
+  }
 
 
   history.forEach(
     (item,index)=>{
 
       const div =
-      document.createElement("div");
+        document.createElement(
+          "div"
+        );
 
 
       div.className =
-      "history-item";
+        "history-item";
 
 
       div.textContent =
-      "💬 " + item.title;
+        "💬 " +
+        item.title;
 
 
       div.onclick =
-      function(){
+        function(){
 
-        loadHistory(index);
+          loadHistory(index);
 
-      };
+        };
 
 
       list.appendChild(div);
@@ -788,17 +1169,23 @@ function renderHistory(){
 function loadHistory(index){
 
   const item =
-  history[index];
+    history[index];
+
 
   if(!item) return;
 
 
+  /* Save current before switching */
+
+  saveCurrentChat();
+
+
   messages =
-  item.messages || [];
+    item.messages || [];
 
 
-  const chat =
-  document.getElementById("chat");
+  currentChatId =
+    item.id;
 
 
   chat.innerHTML="";
@@ -815,6 +1202,9 @@ function loadHistory(index){
     }
   );
 
+
+  input.focus();
+
 }
 
 
@@ -825,8 +1215,8 @@ function loadHistory(index){
 function openSettings(){
 
   document
-  .getElementById("settings")
-  .style.display="block";
+    .getElementById("settings")
+    .style.display="block";
 
 }
 
@@ -834,10 +1224,24 @@ function openSettings(){
 function closeSettings(){
 
   document
-  .getElementById("settings")
-  .style.display="none";
+    .getElementById("settings")
+    .style.display="none";
 
 }
+
+
+/* =========================
+   SAVE WHEN LEAVING
+========================= */
+
+window.addEventListener(
+  "beforeunload",
+  function(){
+
+    saveCurrentChat();
+
+  }
+);
 
 
 /* =========================
@@ -849,6 +1253,7 @@ renderHistory();
 </script>
 
 </body>
+
 </html>`, {
       headers: {
         "Content-Type":
@@ -860,7 +1265,7 @@ renderHistory();
 
 
 /* =========================
-   JSON RESPONSE
+   JSON
 ========================= */
 
 function json(data,status=200){
@@ -868,13 +1273,13 @@ function json(data,status=200){
   return new Response(
     JSON.stringify(data),
     {
-      status:status,
+      status,
 
       headers:{
         "Content-Type":
-        "application/json;charset=UTF-8"
+          "application/json;charset=UTF-8"
       }
     }
   );
 
-      }
+}

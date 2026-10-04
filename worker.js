@@ -3,8 +3,32 @@ export default {
     const url = new URL(request.url);
 
     // =========================
+    // HPX AI IDENTITY
+    // =========================
+
+    const HPX_SYSTEM_PROMPT = `
+You are HPX AI, the official AI assistant of HPX LABS.
+
+Known identity:
+- AI name: HPX AI
+- Organization: HPX LABS
+- Founder: Harshit Patel
+- Current version: HPX AI v1.0
+- Purpose: General-purpose AI assistant for conversation, learning, coding, ideas, explanations and productivity.
+
+Behavior:
+- Identify yourself as HPX AI when asked who you are.
+- If asked who founded HPX LABS, say Harshit Patel.
+- Do not invent personal, company, technical or business facts that are not provided.
+- Do not claim to be ChatGPT, OpenAI, Google Gemini or another AI.
+- Be helpful, clear and honest.
+- If you do not know something, say that you do not know instead of making it up.
+`;
+
+    // =========================
     // AI BACKEND
     // =========================
+
     if (url.pathname === "/api/chat") {
       if (request.method !== "POST") {
         return json({ error: "Method Not Allowed" }, 405);
@@ -22,11 +46,11 @@ export default {
 
         const body = await request.json();
 
-        const messages = Array.isArray(body.messages)
+        const incomingMessages = Array.isArray(body.messages)
           ? body.messages.slice(-30)
           : [];
 
-        if (!messages.length) {
+        if (!incomingMessages.length) {
           return json(
             {
               error: "No message provided."
@@ -34,6 +58,15 @@ export default {
             400
           );
         }
+
+        // System identity is kept on the server.
+        const messages = [
+          {
+            role: "system",
+            content: HPX_SYSTEM_PROMPT
+          },
+          ...incomingMessages
+        ];
 
         const response = await fetch(
           "https://openrouter.ai/api/v1/chat/completions",
@@ -71,6 +104,7 @@ export default {
             data?.choices?.[0]?.message?.content ||
             "Sorry, I couldn't generate a response."
         });
+
       } catch (error) {
         return json(
           {
@@ -103,10 +137,6 @@ export default {
 
 <style>
 
-/* =========================
-   BASE
-========================= */
-
 * {
   box-sizing: border-box;
 }
@@ -124,10 +154,6 @@ body {
   background: #050914;
   color: white;
 }
-
-/* =========================
-   APP
-========================= */
 
 .app {
   width: 100%;
@@ -221,7 +247,7 @@ body {
 }
 
 /* =========================
-   TOP BAR
+   TOP
 ========================= */
 
 .top {
@@ -323,7 +349,7 @@ body {
 }
 
 /* =========================
-   INPUT AREA
+   INPUT
 ========================= */
 
 .input-area {
@@ -615,13 +641,23 @@ textarea::placeholder {
   </h3>
 
   <div class="setting-row">
-    <b>Model</b><br>
-    OpenRouter Free Router
+    <b>AI</b><br>
+    HPX AI
   </div>
 
   <div class="setting-row">
-    <b>Provider</b><br>
-    OpenRouter
+    <b>Organization</b><br>
+    HPX LABS
+  </div>
+
+  <div class="setting-row">
+    <b>Founder</b><br>
+    Harshit Patel
+  </div>
+
+  <div class="setting-row">
+    <b>Model</b><br>
+    OpenRouter Free Router
   </div>
 
   <div class="setting-row">
@@ -649,6 +685,7 @@ let isSaving = false;
 let history = [];
 
 try {
+
   history = JSON.parse(
     localStorage.getItem("hpx_history") || "[]"
   );
@@ -656,44 +693,62 @@ try {
   if (!Array.isArray(history)) {
     history = [];
   }
+
 } catch (error) {
+
   history = [];
+
 }
 
-const input = document.getElementById("input");
-const sendButton = document.getElementById("send");
-const chat = document.getElementById("chat");
+const input =
+  document.getElementById("input");
+
+const sendButton =
+  document.getElementById("send");
+
+const chat =
+  document.getElementById("chat");
 
 /* =========================
    INPUT AUTO RESIZE
 ========================= */
 
-input.addEventListener("input", function () {
+input.addEventListener(
+  "input",
+  function () {
 
-  this.style.height = "auto";
+    this.style.height = "auto";
 
-  this.style.height =
-    Math.min(this.scrollHeight, 140) + "px";
+    this.style.height =
+      Math.min(
+        this.scrollHeight,
+        140
+      ) + "px";
 
-});
+  }
+);
 
 /* =========================
    ENTER TO SEND
 ========================= */
 
-input.addEventListener("keydown", function (e) {
+input.addEventListener(
+  "keydown",
+  function (e) {
 
-  if (
-    e.key === "Enter" &&
-    !e.shiftKey
-  ) {
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey
+    ) {
 
-    e.preventDefault();
+      e.preventDefault();
 
-    send();
+      send();
+
+    }
+
   }
-
-});
+);
 
 /* =========================
    ADD MESSAGE
@@ -735,7 +790,10 @@ async function send() {
   const text =
     input.value.trim();
 
-  if (!text || sendButton.disabled) {
+  if (
+    !text ||
+    sendButton.disabled
+  ) {
     return;
   }
 
@@ -746,9 +804,15 @@ async function send() {
     welcome.style.display = "none";
   }
 
+  // Create ONE ID for the current conversation.
   if (!currentChatId) {
+
     currentChatId =
-      Date.now().toString();
+      Date.now().toString() +
+      Math.random()
+        .toString(36)
+        .slice(2, 7);
+
   }
 
   messages.push({
@@ -756,7 +820,10 @@ async function send() {
     content: text
   });
 
-  add("user", text);
+  add(
+    "user",
+    text
+  );
 
   input.value = "";
   input.style.height = "auto";
@@ -764,30 +831,41 @@ async function send() {
   sendButton.disabled = true;
 
   const replyBox =
-    add("assistant", "Thinking...");
+    add(
+      "assistant",
+      "Thinking..."
+    );
 
   try {
 
     const response =
-      await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-        body: JSON.stringify({
-          messages: messages
-        })
-      });
+      await fetch(
+        "/api/chat",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            messages:
+              messages
+          })
+        }
+      );
 
     const data =
       await response.json();
 
     if (!response.ok) {
+
       throw new Error(
         data.error ||
         "Request failed"
       );
+
     }
 
     const reply =
@@ -808,11 +886,15 @@ async function send() {
 
     replyBox.textContent =
       "⚠️ " +
-      (error?.message || "Something went wrong.");
+      (
+        error?.message ||
+        "Something went wrong."
+      );
 
   }
 
-  sendButton.disabled = false;
+  sendButton.disabled =
+    false;
 
   input.focus();
 
@@ -835,44 +917,52 @@ function getTitle() {
     return "New Chat";
   }
 
-  let title =
-    userMessages[0].content
-      .replace(/\s+/g, " ")
-      .trim();
-
   const generic = [
     "hello",
     "hi",
     "hey",
     "hii",
     "helo",
-    "hello hpx ai"
+    "hello hpx ai",
+    "hi hpx ai",
+    "hey hpx ai"
   ];
 
-  if (
-    generic.includes(
-      title.toLowerCase()
-    ) &&
-    userMessages.length > 1
-  ) {
+  // Find the first meaningful message.
+  let meaningfulMessage =
+    userMessages.find(
+      function (m) {
 
-    title =
-      userMessages[1].content
-        .replace(/\s+/g, " ")
-        .trim();
+        const clean =
+          m.content
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+
+        return (
+          clean &&
+          !generic.includes(clean)
+        );
+
+      }
+    );
+
+  // If the whole conversation only contains greetings.
+  if (!meaningfulMessage) {
+    return "New Conversation";
   }
 
-  if (
-    generic.includes(
-      title.toLowerCase()
-    )
-  ) {
-    title = "New Conversation";
-  }
+  let title =
+    meaningfulMessage.content
+      .replace(/\s+/g, " ")
+      .trim();
 
   if (title.length > 35) {
+
     title =
-      title.substring(0, 35) + "...";
+      title.substring(0, 35) +
+      "...";
+
   }
 
   return title;
@@ -886,7 +976,8 @@ function saveCurrentChat() {
 
   if (
     !messages.length ||
-    isSaving
+    isSaving ||
+    !currentChatId
   ) {
     return;
   }
@@ -894,10 +985,13 @@ function saveCurrentChat() {
   const hasAssistant =
     messages.some(
       function (m) {
+
         return (
           m.role === "assistant" &&
+          m.content &&
           m.content !== "Thinking..."
         );
+
       }
     );
 
@@ -907,43 +1001,56 @@ function saveCurrentChat() {
 
   isSaving = true;
 
-  if (!currentChatId) {
-    currentChatId =
-      Date.now().toString();
-  }
-
   const chatData = {
-    id: currentChatId,
-    title: getTitle(),
-    messages: messages.map(
-      function (m) {
-        return {
-          role: m.role,
-          content: m.content
-        };
-      }
-    )
+
+    id:
+      currentChatId,
+
+    title:
+      getTitle(),
+
+    messages:
+      messages.map(
+        function (m) {
+
+          return {
+            role: m.role,
+            content: m.content
+          };
+
+        }
+      )
+
   };
 
   const existingIndex =
     history.findIndex(
       function (item) {
-        return item.id === currentChatId;
+
+        return (
+          item.id ===
+          currentChatId
+        );
+
       }
     );
 
   if (existingIndex >= 0) {
 
+    // Update the existing conversation.
     history[existingIndex] =
       chatData;
 
   } else {
 
+    // Create a new conversation only once.
     history.unshift(
       chatData
     );
+
   }
 
+  // Keep maximum 30 conversations.
   history =
     history.slice(0, 30);
 
@@ -971,6 +1078,7 @@ function saveCurrentChat() {
     },
     100
   );
+
 }
 
 /* =========================
@@ -979,6 +1087,8 @@ function saveCurrentChat() {
 
 function newChat() {
 
+  // Save the current conversation
+  // before starting a completely new one.
   saveCurrentChat();
 
   messages = [];
@@ -992,7 +1102,9 @@ function newChat() {
     '</div>';
 
   input.value = "";
-  input.style.height = "auto";
+
+  input.style.height =
+    "auto";
 
   renderHistory();
 
@@ -1002,6 +1114,7 @@ function newChat() {
     },
     50
   );
+
 }
 
 /* =========================
@@ -1024,7 +1137,9 @@ function renderHistory() {
   if (!history.length) {
 
     const empty =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     empty.className =
       "history-empty";
@@ -1041,14 +1156,19 @@ function renderHistory() {
     function (item, index) {
 
       const div =
-        document.createElement("div");
+        document.createElement(
+          "div"
+        );
 
       div.className =
         "history-item";
 
       div.textContent =
         "💬 " +
-        (item.title || "New Chat");
+        (
+          item.title ||
+          "New Conversation"
+        );
 
       div.onclick =
         function () {
@@ -1059,6 +1179,7 @@ function renderHistory() {
 
     }
   );
+
 }
 
 /* =========================
@@ -1074,16 +1195,30 @@ function loadHistory(index) {
     return;
   }
 
+  // Do not overwrite another active chat
+  // without saving it first.
   if (
     messages.length &&
+    currentChatId &&
     currentChatId !== item.id
   ) {
+
     saveCurrentChat();
+
   }
 
   messages =
     Array.isArray(item.messages)
-      ? item.messages
+      ? item.messages.map(
+          function (m) {
+
+            return {
+              role: m.role,
+              content: m.content
+            };
+
+          }
+        )
       : [];
 
   currentChatId =
@@ -1111,12 +1246,16 @@ function loadHistory(index) {
 
       }
     );
+
   }
 
   input.value = "";
-  input.style.height = "auto";
+
+  input.style.height =
+    "auto";
 
   input.focus();
+
 }
 
 /* =========================
@@ -1132,6 +1271,7 @@ function openSettings() {
 
   settings.style.display =
     "block";
+
 }
 
 function closeSettings() {
@@ -1143,6 +1283,7 @@ function closeSettings() {
 
   settings.style.display =
     "none";
+
 }
 
 /* =========================
@@ -1152,7 +1293,9 @@ function closeSettings() {
 window.addEventListener(
   "beforeunload",
   function () {
+
     saveCurrentChat();
+
   }
 );
 
@@ -1172,16 +1315,21 @@ setTimeout(
 </script>
 
 </body>
+
 </html>`;
 
-    return new Response(html, {
-      headers: {
-        "Content-Type":
-          "text/html;charset=UTF-8",
-        "Cache-Control":
-          "no-store"
+    return new Response(
+      html,
+      {
+        headers: {
+          "Content-Type":
+            "text/html;charset=UTF-8",
+
+          "Cache-Control":
+            "no-store"
+        }
       }
-    });
+    );
   }
 };
 
@@ -1189,16 +1337,21 @@ setTimeout(
    JSON RESPONSE
 ========================= */
 
-function json(data, status = 200) {
+function json(
+  data,
+  status = 200
+) {
 
   return new Response(
     JSON.stringify(data),
     {
       status: status,
+
       headers: {
         "Content-Type":
           "application/json;charset=UTF-8"
       }
     }
   );
-      }
+
+}

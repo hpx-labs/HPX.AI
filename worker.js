@@ -2,6 +2,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // =========================================================
+    // HPX AI API
+    // =========================================================
     if (url.pathname === "/api/chat") {
       if (request.method !== "POST") {
         return json({ error: "Method Not Allowed" }, 405);
@@ -27,14 +30,14 @@ export default {
               m &&
               (m.role === "user" || m.role === "assistant") &&
               typeof m.content === "string" &&
-              m.content.trim()
+              m.content.trim().length > 0
             );
           })
-          .slice(-30);
+          .slice(-40);
 
         const memory =
           typeof body.memory === "string"
-            ? body.memory.slice(0, 4000)
+            ? body.memory.slice(0, 5000)
             : "";
 
         const systemPrompt =
@@ -43,18 +46,19 @@ export default {
           "Organization: HPX LABS.\n" +
           "Founder: Harshit Patel.\n" +
           "Version: HPX AI v1.0.\n" +
-          "Purpose: General purpose AI assistant.\n\n" +
+          "Purpose: General-purpose AI assistant.\n\n" +
           "Rules:\n" +
           "- If asked who you are, say HPX AI.\n" +
           "- If asked who founded HPX LABS, say Harshit Patel.\n" +
           "- Do not claim to be ChatGPT, Gemini, Claude or another AI.\n" +
           "- Do not invent facts about HPX LABS or Harshit Patel.\n" +
           "- Do not claim live web access unless it is actually available.\n" +
-          "- Match the user's language.\n" +
-          "- For Hindi or Hinglish, use natural Hinglish.\n" +
-          "- Be clear, useful and concise.\n" +
-          "- For coding, provide clean code.\n" +
-          "- For calculations, calculate carefully.";
+          "- Match the users language.\n" +
+          "- For Hindi or Hinglish, respond naturally in Hinglish.\n" +
+          "- Be useful, clear and reasonably concise.\n" +
+          "- For coding questions, provide clean code.\n" +
+          "- For calculations, calculate carefully.\n" +
+          "- Use Markdown when useful.";
 
         const finalSystemPrompt = memory
           ? systemPrompt +
@@ -63,27 +67,40 @@ export default {
             "\nUse this memory only when relevant."
           : systemPrompt;
 
-        const response = await fetch(
-          "https://openrouter.ai/api/v1/chat/completions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: "Bearer " + env.OPENROUTER_API_KEY,
-              "Content-Type": "application/json",
-              "HTTP-Referer": url.origin,
-              "X-Title": "HPX AI"
-            },
-            body: JSON.stringify({
-              model: "openrouter/free",
-              messages: [
-                {
-                  role: "system",
-                  content: finalSystemPrompt
-                }
-              ].concat(messages)
-            })
-          }
-        );
+        const controller = new AbortController();
+
+        const timeout = setTimeout(function () {
+          controller.abort();
+        }, 60000);
+
+        let response;
+
+        try {
+          response = await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + env.OPENROUTER_API_KEY,
+                "Content-Type": "application/json",
+                "HTTP-Referer": url.origin,
+                "X-Title": "HPX AI"
+              },
+              body: JSON.stringify({
+                model: "openrouter/free",
+                messages: [
+                  {
+                    role: "system",
+                    content: finalSystemPrompt
+                  }
+                ].concat(messages)
+              }),
+              signal: controller.signal
+            }
+          );
+        } finally {
+          clearTimeout(timeout);
+        }
 
         const data = await response.json();
 
@@ -111,9 +128,20 @@ export default {
             : "Sorry, I could not generate a response.";
 
         return json({
-          reply: String(reply)
+          reply: String(reply),
+          model:
+            data && data.model
+              ? String(data.model)
+              : "openrouter/free"
         });
       } catch (error) {
+        if (error && error.name === "AbortError") {
+          return json(
+            { error: "Request timed out. Please try again." },
+            504
+          );
+        }
+
         return json(
           {
             error:
@@ -126,6 +154,10 @@ export default {
       }
     }
 
+    // =========================================================
+    // HPX AI FRONTEND
+    // =========================================================
+
     return new Response(createHTML(), {
       status: 200,
       headers: {
@@ -136,173 +168,695 @@ export default {
   }
 };
 
+
+// =============================================================
+// JSON HELPER
+// =============================================================
+
 function json(data, status) {
   return new Response(JSON.stringify(data), {
     status: status || 200,
     headers: {
-      "Content-Type": "application/json;charset=UTF-8"
+      "Content-Type": "application/json;charset=UTF-8",
+      "Cache-Control": "no-store"
     }
   });
 }
 
+
+// =============================================================
+// FRONTEND
+// =============================================================
+
 function createHTML() {
   const lines = [
-    "<!DOCTYPE html>",
-    "<html lang=\"en\">",
-    "<head>",
-    "<meta charset=\"UTF-8\">",
-    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
-    "<meta name=\"theme-color\" content=\"#07111f\">",
-    "<title>HPX AI</title>",
-    "<style>",
-    "*{box-sizing:border-box}",
-    "html,body{margin:0;width:100%;height:100%;}",
-    "body{font-family:Arial,sans-serif;background:#07111f;color:#edf6ff;overflow:hidden}",
-    "button,input,textarea{font:inherit}",
-    "button{cursor:pointer}",
-    ".app{display:flex;height:100vh}",
-    ".side{width:270px;flex-shrink:0;background:#081522;border-right:1px solid #193047;display:flex;flex-direction:column}",
-    ".brand{padding:20px;border-bottom:1px solid #193047}",
-    ".brand b{font-size:25px}",
-    ".brand small{display:block;margin-top:5px;color:#8da6bc}",
-    ".new{margin:15px;padding:12px;border:1px solid #168ed5;border-radius:11px;background:#0b2237;color:white;font-weight:bold}",
-    ".search{margin:0 15px 10px;padding:10px;border:1px solid #20384f;border-radius:9px;background:#0b1c2c;color:white;outline:none}",
-    ".history{flex:1;overflow:auto;padding:0 10px}",
-    ".item{display:flex;gap:5px;padding:10px;border-radius:9px;color:#cbd9e6}",
-    ".item:hover{background:#102a40}",
-    ".name{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}",
-    ".del{border:0;background:transparent;color:#718ba0}",
-    ".info{padding:15px;border-top:1px solid #193047;color:#849caf;font-size:11px;line-height:1.6}",
-    ".main{flex:1;min-width:0;display:flex;flex-direction:column}",
-    ".top{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;border-bottom:1px solid #193047}",
-    ".title{font-weight:bold}.online{font-size:10px;color:#52d88b}",
-    ".actions{display:flex;gap:6px}",
-    ".icon,.tool{border:1px solid #20384f;border-radius:9px;background:#0b1c2c;color:white;padding:8px 10px}",
-    ".chat{flex:1;overflow:auto;padding:20px 14px 170px}",
-    ".inner{max-width:900px;margin:auto}",
-    ".welcome{text-align:center;padding-top:15vh}",
-    ".logo{width:70px;height:70px;margin:auto;border-radius:20px;background:linear-gradient(135deg,#0d77c7,#0bd6d6);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:21px}",
-    ".welcome p{color:#8da5ba;line-height:1.6}",
-    ".row{display:flex;margin:15px 0}",
-    ".user{justify-content:flex-end}",
-    ".msg{max-width:90%;padding:13px 15px;border-radius:16px;line-height:1.6;overflow-wrap:anywhere}",
-    ".user .msg{background:#104a70;border:1px solid #1c6b9d}",
-    ".ai .msg{background:#0c1d2d;border:1px solid #193047}",
-    ".code{margin:10px 0;border:1px solid #20384f;border-radius:9px;overflow:auto;background:#050b12}",
-    ".codebar{padding:6px 9px;border-bottom:1px solid #20384f;font-size:10px;color:#8da6bc}",
-    ".code pre{margin:0;padding:12px;overflow:auto}",
-    ".copy{float:right;border:1px solid #28435b;border-radius:6px;background:#10263a;color:white;font-size:10px;padding:4px 7px}",
-    ".composer{position:fixed;left:270px;right:0;bottom:0;padding:10px 15px 13px;background:#07111f}",
-    ".box{max-width:900px;margin:auto}",
-    ".tools{display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap}",
-    ".tool{font-size:11px;padding:6px 8px;color:#a9bed0}",
-    ".input{display:flex;gap:7px;padding:8px;border:1px solid #25435c;border-radius:14px;background:#0a1a29}",
-    "textarea{flex:1;min-height:42px;max-height:140px;resize:none;border:0;outline:0;background:transparent;color:white;padding:9px}",
-    ".send{width:44px;border:0;border-radius:10px;background:#1179bd;color:white}",
-    ".note{text-align:center;color:#61798e;font-size:9px;margin-top:5px}",
-    ".panel{display:none;position:fixed;right:15px;top:75px;width:330px;max-width:calc(100% - 30px);z-index:20;padding:17px;border:1px solid #28435b;border-radius:14px;background:#0b1c2c}",
-    ".panel.show{display:block}",
-    ".setting{padding:12px 0;border-bottom:1px solid #193047}",
-    ".setting button{margin-top:7px}",
-    ".mobile{display:none}",
-    "@media(max-width:800px){.side{position:fixed;left:-280px;top:0;bottom:0;z-index:30;transition:.2s}.side.open{left:0}.mobile{display:inline-block}.composer{left:0}.chat{padding-bottom:180px}}",
-    "</style>",
-    "</head>",
-    "<body>",
-    "<div class=\"app\">",
-    "<aside class=\"side\" id=\"side\">",
-    "<div class=\"brand\"><b>⚡ HPX AI</b><small>Powered by HPX LABS</small></div>",
-    "<button class=\"new\" id=\"new\">＋ New Chat</button>",
-    "<input class=\"search\" id=\"search\" placeholder=\"Search chats...\">",
-    "<div class=\"history\" id=\"history\"></div>",
-    "<div class=\"info\">HPX AI v1.0<br>Founder: Harshit Patel<br>HPX LABS</div>",
-    "</aside>",
-    "<main class=\"main\">",
-    "<header class=\"top\">",
-    "<div><button class=\"icon mobile\" id=\"menu\">☰</button> <span class=\"title\">HPX AI</span><div class=\"online\">● Online</div></div>",
-    "<div class=\"actions\"><button class=\"icon\" id=\"topNew\">＋</button><button class=\"icon\" id=\"settings\">⚙</button></div>",
-    "</header>",
-    "<section class=\"chat\" id=\"chat\"><div class=\"inner\" id=\"inner\">",
-    "<div class=\"welcome\" id=\"welcome\"><div class=\"logo\">HPX</div><h1>How can I help you?</h1><p>I am HPX AI, the official AI assistant of HPX LABS.</p></div>",
-    "</div></section>",
-    "<div class=\"composer\"><div class=\"box\">",
-    "<div class=\"tools\"><button class=\"tool\" id=\"voice\">🎤 Voice</button><button class=\"tool\" id=\"calc\">🧮 Calculator</button><button class=\"tool\" id=\"export\">📥 Export</button></div>",
-    "<div class=\"input\"><textarea id=\"input\" placeholder=\"Message HPX AI...\"></textarea><button class=\"send\" id=\"send\">➤</button></div>",
-    "<div class=\"note\">HPX AI can make mistakes. Check important information.</div>",
-    "</div></div>",
-    "</main></div>",
-    "<div class=\"panel\" id=\"panel\">",
-    "<h3>⚙ HPX AI Settings</h3>",
-    "<div class=\"setting\"><b>Appearance</b><br><button class=\"tool\" id=\"theme\">🌙 / ☀️ Toggle Theme</button></div>",
-    "<div class=\"setting\"><b>🧠 Local Memory</b><br><button class=\"tool\" id=\"memory\">＋ Add Memory</button> <button class=\"tool\" id=\"clearMemory\">Clear</button></div>",
-    "<div class=\"setting\"><b>💬 Chat Data</b><br><button class=\"tool\" id=\"clearHistory\">Delete All Chats</button></div>",
-    "<div class=\"setting\"><b>ℹ About</b><br>HPX AI v1.0<br>Founder: Harshit Patel<br>HPX LABS</div>",
-    "</div>",
-    "<script>",
-    "(function(){",
-    "\"use strict\";",
-    "var KEY=\"hpx_history_final\",MEM=\"hpx_memory_final\",THEME=\"hpx_theme_final\";",
-    "var id=null,msgs=[];",
-    "var side=document.getElementById(\"side\"),inner=document.getElementById(\"inner\"),input=document.getElementById(\"input\"),history=document.getElementById(\"history\"),search=document.getElementById(\"search\"),panel=document.getElementById(\"panel\"),send=document.getElementById(\"send\");",
-    "function getHistory(){try{return JSON.parse(localStorage.getItem(KEY)||\"[]\")}catch(e){return[]}}",
-    "function saveHistory(x){localStorage.setItem(KEY,JSON.stringify(x))}",
-    "function newId(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}",
-    "function esc(x){return String(x).replace(/&/g,\"&amp;\").replace(/</g,\"&lt;\").replace(/>/g,\"&gt;\").replace(/\\\"/g,\"&quot;\")}",
-    "function format(x){",
-    "var s=esc(x);",
-    "var marker=String.fromCharCode(96)+String.fromCharCode(96)+String.fromCharCode(96);",
-    "var p=s.split(marker),out=\"\";",
-    "for(var i=0;i<p.length;i++){if(i%2===0){out+=p[i]}else{out+=\"<div class=\\\"code\\\"><div class=\\\"codebar\\\">Code <button class=\\\"copy\\\" data-code=\\\"\"+encodeURIComponent(p[i])+\"\\\">Copy</button></div><pre>\"+p[i]+\"</pre></div>\"}}",
-    "s=out;",
-    "s=s.replace(/\\n/g,\"<br>\");",
-    "return s;",
-    "}",
-    "function render(){",
-    "inner.innerHTML=\"\";",
-    "if(!msgs.length){inner.innerHTML=\"<div class=\\\"welcome\\\"><div class=\\\"logo\\\">HPX</div><h1>How can I help you?</h1><p>I am HPX AI, the official AI assistant of HPX LABS.</p></div>\";return}",
-    "msgs.forEach(function(m){var r=document.createElement(\"div\");r.className=\"row \"+(m.role===\"user\"?\"user\":\"ai\");var b=document.createElement(\"div\");b.className=\"msg\";b.innerHTML=format(m.content);r.appendChild(b);inner.appendChild(r)});",
-    "document.getElementById(\"chat\").scrollTop=document.getElementById(\"chat\").scrollHeight;",
-    "}",
-    "function renderHistory(){",
-    "var q=(search.value||\"\").toLowerCase();history.innerHTML=\"\";",
-    "getHistory().sort(function(a,b){return b.updated-a.updated}).filter(function(x){return !q||x.title.toLowerCase().indexOf(q)>=0}).forEach(function(x){",
-    "var r=document.createElement(\"div\");r.className=\"item\";var n=document.createElement(\"div\");n.className=\"name\";n.textContent=x.title;n.onclick=function(){openChat(x.id)};var d=document.createElement(\"button\");d.className=\"del\";d.textContent=\"×\";d.onclick=function(){deleteChat(x.id)};r.appendChild(n);r.appendChild(d);history.appendChild(r)});",
-    "}",
-    "function saveCurrent(){if(!id||!msgs.length)return;var all=getHistory();var first=msgs.find(function(x){return x.role===\"user\"});var title=first?first.content:\"New Chat\";title=title.replace(/\\s+/g,\" \").slice(0,60);var f=all.find(function(x){return x.id===id});if(f){f.messages=msgs;f.title=title;f.updated=Date.now()}else{all.push({id:id,title:title,messages:msgs,updated:Date.now()})}saveHistory(all);renderHistory()}",
-    "function start(){id=newId();msgs=[];render();renderHistory()}",
-    "function openChat(x){var f=getHistory().find(function(a){return a.id===x});if(!f)return;id=f.id;msgs=f.messages||[];render();renderHistory();side.classList.remove(\"open\")}",
-    "function deleteChat(x){saveHistory(getHistory().filter(function(a){return a.id!==x}));if(id===x)start();else renderHistory()}",
-    "async function sendMessage(){",
-    "var text=input.value.trim();if(!text||send.disabled)return;",
-    "if(!id)id=newId();msgs.push({role:\"user\",content:text});input.value=\"\";render();saveCurrent();send.disabled=true;",
-    "try{",
-    "var r=await fetch(\"/api/chat\",{method:\"POST\",headers:{\"Content-Type\":\"application/json\"},body:JSON.stringify({messages:msgs,memory:localStorage.getItem(MEM)||\"\"})});",
-    "var d=await r.json();if(!r.ok)throw new Error(d.error||\"Request failed\");",
-    "msgs.push({role:\"assistant\",content:String(d.reply||\"No response\")});saveCurrent();render();",
-    "}catch(e){msgs.push({role:\"assistant\",content:\"Sorry, something went wrong: \"+e.message});saveCurrent();render()}finally{send.disabled=false;input.focus()}",
-    "}",
-    "document.getElementById(\"new\").onclick=start;",
-    "document.getElementById(\"topNew\").onclick=start;",
-    "send.onclick=sendMessage;",
-    "input.addEventListener(\"keydown\",function(e){if(e.key===\"Enter\"&&!e.shiftKey){e.preventDefault();sendMessage()}});",
-    "search.oninput=renderHistory;",
-    "document.getElementById(\"menu\").onclick=function(){side.classList.toggle(\"open\")};",
-    "document.getElementById(\"settings\").onclick=function(){panel.classList.toggle(\"show\")};",
-    "document.getElementById(\"theme\").onclick=function(){document.body.classList.toggle(\"light\");localStorage.setItem(THEME,document.body.classList.contains(\"light\")?\"light\":\"dark\")};",
-    "document.getElementById(\"memory\").onclick=function(){var x=prompt(\"What should HPX AI remember?\",localStorage.getItem(MEM)||\"\");if(x!==null)localStorage.setItem(MEM,x.slice(0,4000))};",
-    "document.getElementById(\"clearMemory\").onclick=function(){localStorage.removeItem(MEM);alert(\"Memory cleared\")};",
-    "document.getElementById(\"clearHistory\").onclick=function(){if(confirm(\"Delete all chat history?\")){localStorage.removeItem(KEY);start()}};",
-    "document.getElementById(\"calc\").onclick=function(){var x=prompt(\"Enter calculation, example: 25*4+10\");if(!x)return;if(!/^[0-9+\\-*/%().\\s]+$/.test(x)){alert(\"Only basic arithmetic is allowed\");return}try{alert(\"Result: \"+Function(\"return (\"+x+\")\")())}catch(e){alert(\"Invalid calculation\")}};",
-    "document.getElementById(\"export\").onclick=function(){if(!msgs.length){alert(\"No chat to export\");return}var x=msgs.map(function(m){return(m.role===\"user\"?\"You\":\"HPX AI\")+\":\\n\"+m.content}).join(\"\\n\\n\");var b=new Blob([x],{type:\"text/plain\"});var a=document.createElement(\"a\");a.href=URL.createObjectURL(b);a.download=\"hpx-ai-chat.txt\";a.click()};",
-    "document.getElementById(\"voice\").onclick=function(){var R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){alert(\"Voice input is not supported\");return}var r=new R();r.lang=\"hi-IN\";r.onresult=function(e){input.value+=(input.value?\" \":\"\")+e.results[0][0].transcript};r.start()};",
-    "document.addEventListener(\"click\",function(e){if(e.target.classList.contains(\"copy\")){navigator.clipboard.writeText(decodeURIComponent(e.target.getAttribute(\"data-code\")||\"\"));e.target.textContent=\"Copied\"}});",
-    "if(localStorage.getItem(THEME)===\"light\")document.body.classList.add(\"light\");",
-    "start();",
-    "})();",
-    "</script>",
-    "</body>",
-    "</html>"
-  ];
 
-  return lines.join("\n");
-          }
+'<!DOCTYPE html>',
+'<html lang="en">',
+'<head>',
+'<meta charset="UTF-8">',
+'<meta name="viewport" content="width=device-width,initial-scale=1.0">',
+'<meta name="theme-color" content="#07111f">',
+'<title>HPX AI</title>',
+
+'<style>',
+
+'*{box-sizing:border-box;margin:0;padding:0}',
+
+':root{',
+'--bg:#07111f;',
+'--panel:#0b1728;',
+'--panel2:#101f34;',
+'--border:#203550;',
+'--text:#f5f7fb;',
+'--muted:#91a0b5;',
+'--accent:#22d3ee;',
+'--accent2:#3b82f6;',
+'--danger:#ef4444;',
+'--user:#153b5b;',
+'--assistant:#0d1c2e',
+'}',
+
+'body{',
+'font-family:Arial,Helvetica,sans-serif;',
+'background:var(--bg);',
+'color:var(--text);',
+'height:100vh;',
+'overflow:hidden',
+'}',
+
+'button,input,textarea,select{font:inherit}',
+
+'button{cursor:pointer}',
+
+'.app{display:flex;height:100vh;width:100vw}',
+
+'.sidebar{',
+'width:290px;',
+'background:var(--panel);',
+'border-right:1px solid var(--border);',
+'display:flex;',
+'flex-direction:column;',
+'transition:.25s;',
+'z-index:20',
+'}',
+
+'.brand{',
+'padding:18px;',
+'border-bottom:1px solid var(--border);',
+'display:flex;',
+'align-items:center;',
+'gap:12px',
+'}',
+
+'.logo{',
+'width:42px;',
+'height:42px;',
+'border-radius:12px;',
+'display:flex;',
+'align-items:center;',
+'justify-content:center;',
+'font-weight:900;',
+'background:linear-gradient(135deg,var(--accent),var(--accent2));',
+'color:#00111c',
+'}',
+
+'.brand h1{font-size:20px}',
+'.brand small{display:block;color:var(--muted);margin-top:3px}',
+
+'.newChat{',
+'margin:14px;',
+'padding:12px;',
+'border:1px solid var(--border);',
+'border-radius:12px;',
+'background:var(--panel2);',
+'color:var(--text);',
+'font-weight:700',
+'}',
+
+'.newChat:hover{border-color:var(--accent)}',
+
+'.searchBox{padding:0 14px 12px}',
+
+'.searchBox input{',
+'width:100%;',
+'padding:11px 12px;',
+'border-radius:10px;',
+'border:1px solid var(--border);',
+'background:#071321;',
+'color:var(--text);',
+'outline:none',
+'}',
+
+'.history{',
+'flex:1;',
+'overflow:auto;',
+'padding:0 10px 10px',
+'}',
+
+'.historyTitle{',
+'font-size:12px;',
+'color:var(--muted);',
+'padding:8px 6px',
+'}',
+
+'.chatItem{',
+'padding:11px;',
+'border-radius:10px;',
+'margin-bottom:4px;',
+'cursor:pointer;',
+'position:relative;',
+'border:1px solid transparent',
+'}',
+
+'.chatItem:hover{background:var(--panel2)}',
+'.chatItem.active{background:#13263d;border-color:var(--border)}',
+
+'.chatName{',
+'white-space:nowrap;',
+'overflow:hidden;',
+'text-overflow:ellipsis;',
+'padding-right:70px;',
+'font-size:14px',
+'}',
+
+'.chatMeta{font-size:11px;color:var(--muted);margin-top:4px}',
+
+'.chatActions{',
+'position:absolute;',
+'right:6px;',
+'top:8px;',
+'display:none;',
+'gap:3px',
+'}',
+
+'.chatItem:hover .chatActions{display:flex}',
+
+'.miniBtn{',
+'border:0;',
+'background:transparent;',
+'color:var(--muted);',
+'padding:4px;',
+'border-radius:5px',
+'}',
+
+'.miniBtn:hover{color:var(--text);background:#1a304b}',
+
+'.sideBottom{',
+'border-top:1px solid var(--border);',
+'padding:10px;',
+'display:grid;',
+'grid-template-columns:1fr 1fr;',
+'gap:7px',
+'}',
+
+'.sideBottom button{',
+'padding:9px;',
+'background:var(--panel2);',
+'color:var(--text);',
+'border:1px solid var(--border);',
+'border-radius:9px;',
+'font-size:12px',
+'}',
+
+'.main{',
+'flex:1;',
+'display:flex;',
+'flex-direction:column;',
+'min-width:0',
+'}',
+
+'.topbar{',
+'height:62px;',
+'border-bottom:1px solid var(--border);',
+'display:flex;',
+'align-items:center;',
+'justify-content:space-between;',
+'padding:0 16px;',
+'background:rgba(7,17,31,.92);',
+'backdrop-filter:blur(10px);',
+'z-index:5',
+'}',
+
+'.topLeft{display:flex;align-items:center;gap:10px}',
+
+'.menuBtn{',
+'display:none;',
+'border:1px solid var(--border);',
+'background:var(--panel2);',
+'color:var(--text);',
+'border-radius:9px;',
+'padding:8px 10px',
+'}',
+
+'.model{',
+'font-size:13px;',
+'color:var(--muted)',
+'}',
+
+'.status{',
+'font-size:12px;',
+'color:#4ade80;',
+'display:flex;',
+'align-items:center;',
+'gap:5px',
+'}',
+
+'.dot{width:7px;height:7px;border-radius:50%;background:#4ade80}',
+
+'.messages{',
+'flex:1;',
+'overflow-y:auto;',
+'padding:25px max(16px,calc((100vw - 900px)/2));',
+'scroll-behavior:smooth',
+'}',
+
+'.welcome{',
+'min-height:70%;',
+'display:flex;',
+'align-items:center;',
+'justify-content:center;',
+'flex-direction:column;',
+'text-align:center;',
+'gap:12px',
+'}',
+
+'.welcomeLogo{',
+'width:70px;',
+'height:70px;',
+'border-radius:20px;',
+'display:flex;',
+'align-items:center;',
+'justify-content:center;',
+'font-size:28px;',
+'font-weight:900;',
+'background:linear-gradient(135deg,var(--accent),var(--accent2));',
+'color:#00111c;',
+'box-shadow:0 0 40px rgba(34,211,238,.15)',
+'}',
+
+'.welcome h2{font-size:30px}',
+'.welcome p{color:var(--muted);max-width:520px}',
+
+'.suggestions{',
+'display:grid;',
+'grid-template-columns:repeat(2,1fr);',
+'gap:8px;',
+'width:min(600px,100%);',
+'margin-top:12px',
+'}',
+
+'.suggestion{',
+'padding:11px;',
+'border:1px solid var(--border);',
+'background:var(--panel);',
+'color:var(--text);',
+'border-radius:10px;',
+'text-align:left',
+'}',
+
+'.suggestion:hover{border-color:var(--accent)}',
+
+'.message{display:flex;margin:0 auto 20px;width:100%;gap:11px}',
+
+'.avatar{',
+'width:34px;',
+'height:34px;',
+'border-radius:9px;',
+'display:flex;',
+'align-items:center;',
+'justify-content:center;',
+'flex-shrink:0;',
+'font-size:12px;',
+'font-weight:800',
+'}',
+
+'.message.user .avatar{background:#1c4f75}',
+'.message.assistant .avatar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#00111c}',
+
+'.bubble{',
+'max-width:calc(100% - 45px);',
+'line-height:1.6;',
+'font-size:15px;',
+'overflow-wrap:anywhere',
+'}',
+
+'.message.user .bubble{',
+'background:var(--user);',
+'padding:10px 13px;',
+'border-radius:12px',
+'}',
+
+'.message.assistant .bubble{',
+'background:var(--assistant);',
+'border:1px solid var(--border);',
+'padding:12px 14px;',
+'border-radius:12px',
+'}',
+
+'.bubble p{margin-bottom:8px}',
+'.bubble p:last-child{margin-bottom:0}',
+'.bubble ul,.bubble ol{margin:7px 0 7px 22px}',
+'.bubble li{margin:3px 0}',
+'.bubble strong{font-weight:800}',
+'.bubble code{',
+'background:#06101d;',
+'border:1px solid #1b3048;',
+'padding:2px 5px;',
+'border-radius:5px;',
+'font-family:monospace',
+'}',
+
+'.codeBox{',
+'background:#050c15;',
+'border:1px solid var(--border);',
+'border-radius:9px;',
+'margin:10px 0;',
+'overflow:hidden',
+'}',
+
+'.codeHead{',
+'display:flex;',
+'justify-content:space-between;',
+'align-items:center;',
+'padding:7px 10px;',
+'background:#0b1725;',
+'color:var(--muted);',
+'font-size:11px',
+'}',
+
+'.codeCopy{',
+'border:1px solid var(--border);',
+'background:#12243a;',
+'color:var(--text);',
+'padding:4px 8px;',
+'border-radius:6px;',
+'font-size:11px',
+'}',
+
+'.codeBox pre{',
+'padding:12px;',
+'overflow:auto;',
+'font-family:monospace;',
+'font-size:13px;',
+'line-height:1.5',
+'}',
+
+'.math{',
+'font-family:Georgia,serif;',
+'background:#091526;',
+'padding:4px 7px;',
+'border-radius:5px;',
+'display:inline-block',
+'}',
+
+'.msgTools{',
+'display:flex;',
+'gap:4px;',
+'margin-top:6px',
+'}',
+
+'.toolBtn{',
+'border:1px solid transparent;',
+'background:transparent;',
+'color:var(--muted);',
+'padding:5px 7px;',
+'border-radius:6px;',
+'font-size:11px',
+'}',
+
+'.toolBtn:hover{',
+'color:var(--text);',
+'background:var(--panel2);',
+'border-color:var(--border)',
+'}',
+
+'.composerWrap{',
+'padding:10px max(16px,calc((100vw - 900px)/2)) 15px;',
+'border-top:1px solid var(--border);',
+'background:var(--bg)',
+'}',
+
+'.composer{',
+'display:flex;',
+'align-items:flex-end;',
+'gap:8px;',
+'background:var(--panel);',
+'border:1px solid var(--border);',
+'border-radius:15px;',
+'padding:8px',
+'}',
+
+'.composer:focus-within{border-color:var(--accent)}',
+
+'#input{',
+'flex:1;',
+'resize:none;',
+'max-height:180px;',
+'min-height:42px;',
+'border:0;',
+'outline:0;',
+'background:transparent;',
+'color:var(--text);',
+'padding:10px;',
+'line-height:1.4',
+'}',
+
+'.iconBtn{',
+'width:40px;',
+'height:40px;',
+'border:0;',
+'border-radius:10px;',
+'background:transparent;',
+'color:var(--muted)',
+'}',
+
+'.iconBtn:hover{background:var(--panel2);color:var(--text)}',
+
+'.sendBtn{',
+'background:linear-gradient(135deg,var(--accent),var(--accent2));',
+'color:#00111c;',
+'font-weight:900',
+'}',
+
+'.stopBtn{background:#5b1d25;color:#fff}',
+
+'.settings{',
+'position:fixed;',
+'inset:0;',
+'background:rgba(0,0,0,.6);',
+'display:none;',
+'align-items:center;',
+'justify-content:center;',
+'z-index:100;',
+'padding:15px',
+'}',
+
+'.settings.open{display:flex}',
+
+'.modal{',
+'width:min(520px,100%);',
+'max-height:90vh;',
+'overflow:auto;',
+'background:var(--panel);',
+'border:1px solid var(--border);',
+'border-radius:16px;',
+'padding:18px',
+'}',
+
+'.modalHead{',
+'display:flex;',
+'justify-content:space-between;',
+'align-items:center;',
+'margin-bottom:15px',
+'}',
+
+'.modal h3{font-size:20px}',
+
+'.close{',
+'border:0;',
+'background:transparent;',
+'color:var(--muted);',
+'font-size:22px',
+'}',
+
+'.setting{',
+'padding:12px 0;',
+'border-bottom:1px solid var(--border)',
+'}',
+
+'.setting:last-child{border-bottom:0}',
+
+'.setting label{display:block;font-size:13px;margin-bottom:7px}',
+
+'.setting input,.setting select,.setting textarea{',
+'width:100%;',
+'background:#071321;',
+'border:1px solid var(--border);',
+'border-radius:9px;',
+'padding:10px;',
+'color:var(--text);',
+'outline:none',
+'}',
+
+'.setting textarea{min-height:100px;resize:vertical}',
+
+'.row{display:flex;gap:8px;flex-wrap:wrap}',
+
+'.action{',
+'padding:9px 12px;',
+'border:1px solid var(--border);',
+'background:var(--panel2);',
+'color:var(--text);',
+'border-radius:8px',
+'}',
+
+'.action:hover{border-color:var(--accent)}',
+
+'.danger{border-color:#63242a;color:#ff8d96}',
+
+'.toast{',
+'position:fixed;',
+'bottom:85px;',
+'left:50%;',
+'transform:translateX(-50%);',
+'background:#101f32;',
+'border:1px solid var(--border);',
+'padding:9px 13px;',
+'border-radius:9px;',
+'font-size:13px;',
+'display:none;',
+'z-index:200',
+'}',
+
+'.toast.show{display:block}',
+
+'.typing{display:flex;gap:4px;padding:4px}',
+'.typing span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1s infinite}',
+'.typing span:nth-child(2){animation-delay:.15s}',
+'.typing span:nth-child(3){animation-delay:.3s}',
+
+'@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}',
+
+'body.compact .message{margin-bottom:10px}',
+'body.compact .bubble{padding:8px 11px}',
+'body.compact .messages{padding-top:15px}',
+
+'@media(max-width:760px){',
+'.sidebar{position:fixed;left:-300px;top:0;bottom:0}',
+'.sidebar.open{left:0;box-shadow:10px 0 40px rgba(0,0,0,.4)}',
+'.menuBtn{display:block}',
+'.suggestions{grid-template-columns:1fr}',
+'.welcome h2{font-size:25px}',
+'.messages{padding-left:10px;padding-right:10px}',
+'.composerWrap{padding-left:8px;padding-right:8px}',
+'.bubble{font-size:14px}',
+'}',
+
+'</style>',
+'</head>',
+
+'<body>',
+
+'<div class="app">',
+
+'<aside class="sidebar" id="sidebar">',
+
+'<div class="brand">',
+'<div class="logo">HPX</div>',
+'<div>',
+'<h1>HPX AI</h1>',
+'<small>HPX LABS • v1.0</small>',
+'</div>',
+'</div>',
+
+'<button class="newChat" onclick="newChat()">＋ New Chat</button>',
+
+'<div class="searchBox">',
+'<input id="historySearch" placeholder="Search chats..." oninput="renderHistory()">',
+'</div>',
+
+'<div class="history" id="history"></div>',
+
+'<div class="sideBottom">',
+'<button onclick="openSettings()">⚙ Settings</button>',
+'<button onclick="aboutHPX()">ⓘ About</button>',
+'</div>',
+
+'</aside>',
+
+'<main class="main">',
+
+'<header class="topbar">',
+'<div class="topLeft">',
+'<button class="menuBtn" onclick="toggleSidebar()">☰</button>',
+'<div class="model">HPX AI <span id="modelName">• Free Model</span></div>',
+'</div>',
+'<div class="status"><span class="dot"></span><span id="statusText">Ready</span></div>',
+'</header>',
+
+'<section class="messages" id="messages"></section>',
+
+'<div class="composerWrap">',
+'<div class="composer">',
+
+'<button class="iconBtn" onclick="startVoice()" title="Voice input">🎙</button>',
+
+'<textarea id="input" rows="1" placeholder="Message HPX AI..." onkeydown="handleKey(event)" oninput="resizeInput(this)"></textarea>',
+
+'<button class="iconBtn" onclick="calculateInput()" title="Calculator">🧮</button>',
+
+'<button class="iconBtn" onclick="stopGeneration()" id="stopBtn" style="display:none" title="Stop">⏹</button>',
+
+'<button class="iconBtn sendBtn" onclick="sendMessage()" id="sendBtn" title="Send">➤</button>',
+
+'</div>',
+'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:6px">Enter to send • Shift+Enter for new line</div>',
+'</div>',
+
+'</main>',
+'</div>',
+
+'<div class="settings" id="settings">',
+'<div class="modal">',
+
+'<div class="modalHead">',
+'<h3>HPX AI Settings</h3>',
+'<button class="close" onclick="closeSettings()">×</button>',
+'</div>',
+
+'<div class="setting">',
+'<label>Theme</label>',
+'<select id="themeSelect" onchange="changeTheme(this.value)">',
+'<option value="dark">Dark</option>',
+'<option value="light">Light</option>',
+'<option value="system">System</option>',
+'</select>',
+'</div>',
+
+'<div class="setting">',
+'<label>Accent Color</label>',
+'<div class="row">',
+'<button class="action" onclick="setAccent(\'#22d3ee\')">Cyan</button>',
+'<button class="action" onclick="setAccent(\'#8b5cf6\')">Purple</button>',
+'<button class="action" onclick="setAccent(\'#22c55e\')">Green</button>',
+'<button class="action" onclick="setAccent(\'#f59e0b\')">Orange</button>',
+'<button class="action" onclick="setAccent(\'#ef4444\')">Red</button>',
+'</div>',
+'</div>',
+
+'<div class="setting">',
+'<label>Font Size</label>',
+'<select id="fontSelect" onchange="changeFont(this.value)">',
+'<option value="14px">Small</option>',
+'<option value="15px">Normal</option>',
+'<option value="17px">Large</option>',
+'<option value="19px">Extra Large</option>',
+'</select>',
+'</div>',
+
+'<div class="setting">',
+'<label>Layout</label>',
+'<div class="row">',
+'<button class="action" onclick="setCompact(false)">Comfortable</button>',
+'<button class="action" onclick="setCompact(true)">Compact</button>',
+'</div>',
+'</div>',
+
+'<div class="setting">',
+'<label>Local Memory</label>',
+'<textarea id="memoryInput" placeholder="Example: User prefers Hinglish and concise answers."></textarea>',
+'<div class="row" style="margin-top:8px">',
+'<button class="action" onclick="saveMemory()">💾 Save Memory</button>',
+'<button class="action danger" onclick="clearMemory()">Forget Memory</button>',
+'</div>',
+'</div>',
+
+'<div class="setting">',
+'<label>Saved Prompts</label>',
+'<textarea id="promptInput" placeholder="Write a prompt you use often..."></textarea>',
+'<div class="row" style="margin-top:8px">',
+'<button class="action" onclick="savePrompt()">Save Prompt</button>',
+'<button class="action" onclick="showPrompts()">Show Prompts</button>',
+'</div>',
+'

@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hpx-ai",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "observability": {
+    "enabled": true
+  }
+}

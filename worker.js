@@ -2,10 +2,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // =====================================================
-    // HPX AI BACKEND
-    // =====================================================
-
+    // =========================
+    // AI API
+    // =========================
     if (url.pathname === "/api/chat") {
       if (request.method !== "POST") {
         return json({ error: "Method Not Allowed" }, 405);
@@ -14,7 +13,7 @@ export default {
       try {
         if (!env.OPENROUTER_API_KEY) {
           return json(
-            { error: "OPENROUTER_API_KEY is not configured in Cloudflare." },
+            { error: "OPENROUTER_API_KEY is not configured." },
             500
           );
         }
@@ -41,54 +40,39 @@ export default {
             ? body.memory.slice(0, 4000)
             : "";
 
-        const systemPrompt = `
-You are HPX AI, the official AI assistant of HPX LABS.
+        const systemPrompt =
+          "You are HPX AI, the official AI assistant of HPX LABS.\n\n" +
+          "IDENTITY:\n" +
+          "- AI name: HPX AI\n" +
+          "- Organization: HPX LABS\n" +
+          "- Founder: Harshit Patel\n" +
+          "- Version: HPX AI v1.0\n" +
+          "- Purpose: General-purpose AI assistant.\n\n" +
+          "RULES:\n" +
+          "- If asked who you are, say you are HPX AI.\n" +
+          "- If asked who founded HPX LABS, say Harshit Patel.\n" +
+          "- Do not claim to be ChatGPT, Gemini, Claude, or another AI.\n" +
+          "- Do not invent facts about HPX LABS or Harshit Patel.\n" +
+          "- Do not claim live web access unless it is actually available.\n" +
+          "- Match the user's language.\n" +
+          "- For Hindi/Hinglish, use natural Hinglish.\n" +
+          "- Be clear, useful and concise.\n" +
+          "- For coding, provide clean code.\n" +
+          "- For calculations, calculate carefully.\n";
 
-IDENTITY:
-- AI name: HPX AI
-- Organization: HPX LABS
-- Founder: Harshit Patel
-- Current version: HPX AI v1.0
-- Purpose: General-purpose AI assistant for conversation, learning,
-  coding, ideas, explanations and productivity.
-
-IDENTITY RULES:
-- If asked who you are, say you are HPX AI.
-- If asked who founded HPX LABS, say Harshit Patel.
-- Do not claim to be ChatGPT, OpenAI, Google Gemini or another AI.
-- Do not invent company facts.
-- Do not invent personal facts about Harshit Patel.
-- Do not claim to have live web access.
-- If current information is required and you cannot verify it,
-  clearly say that you cannot verify live information.
-
-RESPONSE STYLE:
-- Be helpful, clear and natural.
-- Match the user's language.
-- For Hindi/Hinglish users, use natural Hinglish.
-- Use headings, bullets, numbered steps and tables when useful.
-- For coding questions, provide clean, properly formatted code.
-- For calculations, calculate carefully and verify the result.
-- Do not unnecessarily repeat the user's question.
-`;
-
-        if (memory.trim()) {
-          systemPrompt += `
-
-LOCAL USER MEMORY:
-The user has intentionally saved the following information locally.
-Use it only when relevant:
-
-${memory}
-`;
-        }
+        const finalSystemPrompt = memory
+          ? systemPrompt +
+            "\nLOCAL USER MEMORY:\n" +
+            memory +
+            "\nUse this memory only when relevant."
+          : systemPrompt;
 
         const apiResponse = await fetch(
           "https://openrouter.ai/api/v1/chat/completions",
           {
             method: "POST",
             headers: {
-              "Authorization": "Bearer " + env.OPENROUTER_API_KEY,
+              Authorization: "Bearer " + env.OPENROUTER_API_KEY,
               "Content-Type": "application/json",
               "HTTP-Referer": url.origin,
               "X-Title": "HPX AI"
@@ -98,7 +82,7 @@ ${memory}
               messages: [
                 {
                   role: "system",
-                  content: systemPrompt
+                  content: finalSystemPrompt
                 }
               ].concat(messages)
             })
@@ -146,9 +130,9 @@ ${memory}
       }
     }
 
-    // =====================================================
+    // =========================
     // FRONTEND
-    // =====================================================
+    // =========================
 
     return new Response(HTML, {
       status: 200,
@@ -161,30 +145,26 @@ ${memory}
 };
 
 
-// =========================================================
-// JSON RESPONSE
-// =========================================================
+// =========================
+// JSON HELPER
+// =========================
 
 function json(data, status) {
-  return new Response(
-    JSON.stringify(data),
-    {
-      status: status || 200,
-      headers: {
-        "Content-Type": "application/json;charset=UTF-8"
-      }
+  return new Response(JSON.stringify(data), {
+    status: status || 200,
+    headers: {
+      "Content-Type": "application/json;charset=UTF-8"
     }
-  );
+  });
 }
 
 
-// =========================================================
-// FRONTEND HTML
-// =========================================================
+// =========================
+// HTML
+// =========================
 
 const HTML = `<!DOCTYPE html>
 <html lang="en">
-
 <head>
 
 <meta charset="UTF-8">
@@ -192,12 +172,9 @@ const HTML = `<!DOCTYPE html>
 <meta
   name="viewport"
   content="width=device-width,initial-scale=1,maximum-scale=1"
-/>
+>
 
-<meta
-  name="theme-color"
-  content="#07111f"
-/>
+<meta name="theme-color" content="#07111f">
 
 <title>HPX AI</title>
 
@@ -244,8 +221,7 @@ button {
   height: 100vh;
 }
 
-
-/* ================= SIDEBAR ================= */
+/* SIDEBAR */
 
 .sidebar {
   width: 280px;
@@ -282,10 +258,6 @@ button {
   background: #0b2237;
   color: white;
   font-weight: 700;
-}
-
-.new-chat:active {
-  transform: scale(.98);
 }
 
 .history-title {
@@ -361,8 +333,7 @@ button {
   line-height: 1.7;
 }
 
-
-/* ================= MAIN ================= */
+/* MAIN */
 
 .main {
   min-width: 0;
@@ -422,12 +393,7 @@ button {
   color: #e3eef7;
 }
 
-.icon-btn:hover {
-  background: #12304a;
-}
-
-
-/* ================= CHAT ================= */
+/* CHAT */
 
 .chat {
   flex: 1;
@@ -476,8 +442,7 @@ button {
   line-height: 1.6;
 }
 
-
-/* ================= MESSAGES ================= */
+/* MESSAGES */
 
 .message-row {
   display: flex;
@@ -589,10 +554,6 @@ button {
   font-size: 11px;
 }
 
-.small-btn:hover {
-  background: #173650;
-}
-
 .message a {
   color: #55c8ff;
 }
@@ -614,8 +575,7 @@ button {
   background: #13283b;
 }
 
-
-/* ================= TYPING ================= */
+/* TYPING */
 
 .typing {
   display: inline-flex;
@@ -642,14 +602,12 @@ button {
   0%,60%,100% {
     transform: translateY(0);
   }
-
   30% {
     transform: translateY(-5px);
   }
 }
 
-
-/* ================= INPUT ================= */
+/* INPUT */
 
 .input-area {
   position: fixed;
@@ -681,10 +639,6 @@ button {
   font-size: 11px;
 }
 
-.tool-btn:hover {
-  background: #12304a;
-}
-
 .composer {
   display: flex;
   align-items: flex-end;
@@ -693,7 +647,6 @@ button {
   border: 1px solid #25435c;
   border-radius: 15px;
   background: #0a1a29;
-  box-shadow: 0 8px 35px rgba(0,0,0,.2);
 }
 
 textarea {
@@ -724,13 +677,8 @@ textarea::placeholder {
   font-size: 18px;
 }
 
-.send-btn:hover {
-  background: #1695e8;
-}
-
 .send-btn:disabled {
   opacity: .5;
-  cursor: not-allowed;
 }
 
 .footer-note {
@@ -740,8 +688,7 @@ textarea::placeholder {
   font-size: 9px;
 }
 
-
-/* ================= SETTINGS ================= */
+/* SETTINGS */
 
 .overlay {
   display: none;
@@ -798,8 +745,7 @@ textarea::placeholder {
   line-height: 1.5;
 }
 
-
-/* ================= LIGHT MODE ================= */
+/* LIGHT */
 
 body.light {
   background: #f4f7fa;
@@ -864,17 +810,7 @@ body.light .code-container {
   border-color: #ccd8e2;
 }
 
-body.light .code-top {
-  border-color: #ccd8e2;
-}
-
-body.light .small-btn {
-  background: #eef3f7;
-  color: #304252;
-}
-
-
-/* ================= MOBILE ================= */
+/* MOBILE */
 
 @media (max-width:760px) {
 
@@ -906,242 +842,177 @@ body.light .small-btn {
     padding-left: 9px;
     padding-right: 9px;
   }
-
 }
 
 </style>
 </head>
 
-
 <body>
 
 <div class="app">
 
-  <aside
-    class="sidebar"
-    id="sidebar"
+<aside class="sidebar" id="sidebar">
+
+  <div class="brand">
+    <div class="brand-title">HPX AI</div>
+    <div class="brand-sub">
+      Official AI assistant of HPX LABS
+    </div>
+  </div>
+
+  <button class="new-chat" id="newChatBtn">
+    ＋ New Chat
+  </button>
+
+  <div class="history-title">
+    Chat History
+  </div>
+
+  <input
+    id="historySearch"
+    class="history-search"
+    placeholder="Search chats..."
   >
 
-    <div class="brand">
-      <div class="brand-title">
-        HPX AI
-      </div>
+  <div id="history" class="history"></div>
 
-      <div class="brand-sub">
-        Official AI assistant of HPX LABS
-      </div>
+  <div class="sidebar-bottom">
+    <div class="info-box">
+      Founder: <b>Harshit Patel</b><br>
+      Version: HPX AI v1.0<br>
+      Model: OpenRouter Free Router
     </div>
+  </div>
 
+</aside>
+
+<main class="main">
+
+<header class="topbar">
+
+  <div class="top-left">
 
     <button
-      class="new-chat"
-      id="newChatBtn"
+      id="mobileMenu"
+      class="mobile-menu"
+      aria-label="Menu"
     >
-      ＋ New Chat
+      ☰
     </button>
 
-
-    <div class="history-title">
-      Chat History
+    <div>
+      <div class="title">HPX AI</div>
+      <div class="status">● Online</div>
     </div>
 
+  </div>
 
-    <input
-      id="historySearch"
-      class="history-search"
-      placeholder="Search chats..."
+  <div class="top-actions">
+
+    <button
+      id="topNewChat"
+      class="icon-btn"
+      title="New Chat"
     >
+      ＋
+    </button>
 
+    <button
+      id="settingsBtn"
+      class="icon-btn"
+      title="Settings"
+    >
+      ⚙
+    </button>
 
-    <div
-      id="history"
-      class="history"
-    ></div>
+  </div>
 
+</header>
 
-    <div class="sidebar-bottom">
+<section id="chat" class="chat">
 
-      <div class="info-box">
-        Founder: <b>Harshit Patel</b><br>
-        Version: HPX AI v1.0<br>
-        Model: OpenRouter Free Router
-      </div>
+  <div id="chatInner" class="chat-inner">
 
-    </div>
+    <div id="empty" class="empty">
 
-  </aside>
+      <div class="empty-card">
 
-
-  <main class="main">
-
-    <header class="topbar">
-
-      <div class="top-left">
-
-        <button
-          id="mobileMenu"
-          class="mobile-menu"
-          aria-label="Menu"
-        >
-          ☰
-        </button>
-
-        <div>
-
-          <div class="title">
-            HPX AI
-          </div>
-
-          <div class="status">
-            ● Online
-          </div>
-
+        <div class="logo">
+          HPX
         </div>
 
-      </div>
+        <h1>
+          How can I help you?
+        </h1>
 
-
-      <div class="top-actions">
-
-        <button
-          id="topNewChat"
-          class="icon-btn"
-          title="New Chat"
-        >
-          ＋
-        </button>
-
-        <button
-          id="settingsBtn"
-          class="icon-btn"
-          title="Settings"
-        >
-          ⚙
-        </button>
+        <p>
+          Ask HPX AI anything about learning,
+          coding, ideas, explanations,
+          productivity and more.
+        </p>
 
       </div>
 
-    </header>
+    </div>
 
+  </div>
 
-    <section
-      id="chat"
-      class="chat"
-    >
+</section>
 
-      <div
-        id="chatInner"
-        class="chat-inner"
+<div class="input-area">
+
+  <div class="input-inner">
+
+    <div class="tools">
+
+      <button id="micBtn" class="tool-btn">
+        🎤 Voice
+      </button>
+
+      <button id="calculatorBtn" class="tool-btn">
+        🧮 Calculator
+      </button>
+
+      <button id="exportBtn" class="tool-btn">
+        💾 Export
+      </button>
+
+    </div>
+
+    <div class="composer">
+
+      <textarea
+        id="input"
+        rows="1"
+        placeholder="Message HPX AI..."
+      ></textarea>
+
+      <button
+        id="send"
+        class="send-btn"
+        aria-label="Send"
       >
-
-        <div
-          id="empty"
-          class="empty"
-        >
-
-          <div class="empty-card">
-
-            <div class="logo">
-              HPX
-            </div>
-
-            <h1>
-              How can I help you?
-            </h1>
-
-            <p>
-              Ask HPX AI anything about learning,
-              coding, ideas, explanations,
-              productivity and more.
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <div class="input-area">
-
-      <div class="input-inner">
-
-        <div class="tools">
-
-          <button
-            id="micBtn"
-            class="tool-btn"
-          >
-            🎤 Voice
-          </button>
-
-          <button
-            id="calculatorBtn"
-            class="tool-btn"
-          >
-            🧮 Calculator
-          </button>
-
-          <button
-            id="exportBtn"
-            class="tool-btn"
-          >
-            💾 Export
-          </button>
-
-        </div>
-
-
-        <div class="composer">
-
-          <textarea
-            id="input"
-            rows="1"
-            placeholder="Message HPX AI..."
-          ></textarea>
-
-
-          <button
-            id="send"
-            class="send-btn"
-            aria-label="Send"
-          >
-            ➤
-          </button>
-
-        </div>
-
-
-        <div class="footer-note">
-          HPX AI can make mistakes. Check important information.
-        </div>
-
-      </div>
+        ➤
+      </button>
 
     </div>
 
-  </main>
+    <div class="footer-note">
+      HPX AI can make mistakes. Check important information.
+    </div>
+
+  </div>
 
 </div>
 
+</main>
+</div>
 
-<div
-  id="overlay"
-  class="overlay"
-></div>
+<div id="overlay" class="overlay"></div>
 
+<div id="settings" class="settings">
 
-<div
-  id="settings"
-  class="settings"
->
-
-  <h3>
-    ⚙ HPX AI Settings
-  </h3>
-
+  <h3>⚙ HPX AI Settings</h3>
 
   <div class="setting">
 
@@ -1153,15 +1024,11 @@ body.light .small-btn {
       Switch between dark and light mode.
     </div>
 
-    <button
-      id="themeBtn"
-      class="small-btn"
-    >
+    <button id="themeBtn" class="small-btn">
       🌙 / ☀️ Toggle Theme
     </button>
 
   </div>
-
 
   <div class="setting">
 
@@ -1173,22 +1040,15 @@ body.light .small-btn {
       Save information locally for future conversations.
     </div>
 
-    <button
-      id="addMemoryBtn"
-      class="small-btn"
-    >
+    <button id="addMemoryBtn" class="small-btn">
       ＋ Add Memory
     </button>
 
-    <button
-      id="clearMemoryBtn"
-      class="small-btn"
-    >
+    <button id="clearMemoryBtn" class="small-btn">
       🗑 Clear Memory
     </button>
 
   </div>
-
 
   <div class="setting">
 
@@ -1200,15 +1060,11 @@ body.light .small-btn {
       Chat history is stored locally in this browser.
     </div>
 
-    <button
-      id="clearHistoryBtn"
-      class="small-btn"
-    >
+    <button id="clearHistoryBtn" class="small-btn">
       Delete All Chats
     </button>
 
   </div>
-
 
   <div class="setting">
 
@@ -1229,28 +1085,110 @@ body.light .small-btn {
 
 <script>
 
-/* =====================================================
-   HPX AI CLIENT
-===================================================== */
-
 (function () {
 
-  "use strict";
+"use strict";
+
+/* =========================
+   STATE
+========================= */
+
+var currentChatId = null;
+var messages = [];
+var isGenerating = false;
+
+var HISTORY_KEY = "hpx_ai_history_v2";
+var MEMORY_KEY = "hpx_ai_memory_v2";
+var THEME_KEY = "hpx_ai_theme_v2";
 
 
-  /* ================= STATE ================= */
+/* =========================
+   ELEMENTS
+========================= */
 
-  var currentChatId = null;
+var chat = document.getElementById("chat");
+var chatInner = document.getElementById("chatInner");
+var empty = document.getElementById("empty");
+var input = document.getElementById("input");
+var send = document.getElementById("send");
+var history = document.getElementById("history");
+var historySearch = document.getElementById("historySearch");
 
-  var messages = [];
+var sidebar = document.getElementById("sidebar");
+var mobileMenu = document.getElementById("mobileMenu");
 
-  var isGenerating = false;
+var settings = document.getElementById("settings");
+var settingsBtn = document.getElementById("settingsBtn");
+var overlay = document.getElementById("overlay");
 
-  var HISTORY_KEY = "hpx_ai_history_v1";
+var newChatBtn = document.getElementById("newChatBtn");
+var topNewChat = document.getElementById("topNewChat");
 
-  var MEMORY_KEY = "hpx_ai_memory_v1";
+var themeBtn = document.getElementById("themeBtn");
+var addMemoryBtn = document.getElementById("addMemoryBtn");
+var clearMemoryBtn = document.getElementById("clearMemoryBtn");
+var clearHistoryBtn = document.getElementById("clearHistoryBtn");
 
-  var THEME_KEY = "hpx_ai_theme_v1";
+var micBtn = document.getElementById("micBtn");
+var calculatorBtn = document.getElementById("calculatorBtn");
+var exportBtn = document.getElementById("exportBtn");
 
 
-  /* ======
+/* =========================
+   STORAGE
+========================= */
+
+function loadHistory() {
+  try {
+    var data = JSON.parse(
+      localStorage.getItem(HISTORY_KEY) || "[]"
+    );
+
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHistory(data) {
+  localStorage.setItem(
+    HISTORY_KEY,
+    JSON.stringify(data)
+  );
+}
+
+function loadMemory() {
+  return localStorage.getItem(MEMORY_KEY) || "";
+}
+
+
+/* =========================
+   CHAT ID
+========================= */
+
+function makeId() {
+  return Date.now().toString(36) +
+    Math.random().toString(36).slice(2);
+}
+
+
+/* =========================
+   NEW CHAT
+========================= */
+
+function newChat() {
+
+  currentChatId = makeId();
+  messages = [];
+
+  renderMessages();
+  renderHistory();
+
+  closeSettings();
+  closeMobile();
+
+  input.focus();
+}
+
+
+/* =========================
